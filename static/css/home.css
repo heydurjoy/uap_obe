@@ -1,0 +1,56 @@
+ .welcome-container {
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .level-badge {
+    display: inline-block;
+    background-color: #1d6c5b;
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    font-weight: 500;
+    font-size: 1rem;
+    margin-top: 1rem;
+  }
+
+  .access-heading {
+    text-align: center;
+    margin-top: 2rem;
+    font-size: 1.2rem;
+    color: #333;
+  }
+
+  .card-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 2rem;
+  }
+
+  .access-card {
+    background: white;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    width: 300px;
+    transition: transform 0.2s ease;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .access-card:hover {
+    transform: translateY(-5px);
+  }
+
+  .card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .card-desc {
+    font-size: 1rem;
+    color: #666;
+  }

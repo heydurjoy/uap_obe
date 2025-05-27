@@ -7,14 +7,13 @@
 }
 .navbar, .nav-link, .navbar-brand {
   font-family: 'Lexend', sans-serif;
-  font-weight: 700;
   font-size: 18px;
   color: #ffffff !important; /* light green text */
 }
 
 /* Bigger navbar brand */
 .navbar-brand {
-  font-size: 28px;
+  font-size: 38px;
 }
 
 /* Override link hover to a slightly brighter green */

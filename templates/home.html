@@ -1,8 +1,38 @@
 <!-- home.html -->
-{% extends 'base.html' %}
 
+{% extends 'base.html' %}
+{% load static %}
+{% block head %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
 
 {% block content %}
-<h1>Welcome to the UAP OBE+</h1>
-<p>"One place to store, track, share, and manage marks automatically in an OBE system."</p>
+
+<div class="welcome-container">
+  <h1>Welcome to the UAP OBE+</h1>
+  <p>"One place to store, track, share, and manage marks automatically in an OBE system."</p>
+
+  <h2>Hello, {{ username }} 👋</h2>
+  <div class="level-badge">You are a level {{ x }} user</div>
+</div>
+
+<div class="access-heading">You have the following access:</div>
+
+<div class="card-grid">
+  <div class="access-card">
+    <div class="card-title">Manage the Userbase</div>
+    <div class="card-desc">Add, edit, and control all users in the system.</div>
+  </div>
+
+  <div class="access-card">
+    <div class="card-title">Manage Course Assessment</div>
+    <div class="card-desc">Configure and update course assessments dynamically.</div>
+  </div>
+
+  <div class="access-card">
+    <div class="card-title">See Course-wise History</div>
+    <div class="card-desc">View detailed performance logs and history by course.</div>
+  </div>
+</div>
 {% endblock %}
