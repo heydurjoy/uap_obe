@@ -6,9 +6,9 @@ def home(request):
 
     if request.user.is_authenticated and request.user.is_superuser:
         context['username'] = request.user.username
-        context['is_superuser'] = True
+        context['user_level'] = 'Superuser'
     else:
         context['username'] = request.user.username if request.user.is_authenticated else 'Guest'
-        context['is_superuser'] = False
+        context['user_level'] = 'not logged in'
 
     return render(request,'home.html', context)
