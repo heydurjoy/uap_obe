@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Programs - OBE System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Programs</h2>
+        <a href="{% url 'programs:program_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add Program
+        </a>
+    </div>
+
+    {% if programs %}
+    <div class="row">
+        {% for program in programs %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ program.name }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ program.code }}</h6>
+                    <p class="card-text">{{ program.description|truncatewords:30 }}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-primary">{{ program.department }}</span>
+                        <div class="btn-group">
+                            <a href="{% url 'programs:program_detail' program.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                            <a href="{% url 'programs:program_edit' program.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                            <a href="{% url 'programs:program_delete' program.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No programs found. Click the "Add Program" button to create one.
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 

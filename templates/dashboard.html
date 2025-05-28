@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - UAP OBE System{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Welcome, {{ username }}!</h1>
+    
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Programs</h5>
+                    <p class="card-text">Manage your academic programs and their outcomes.</p>
+                    <a href="{% url 'programs:program_list' %}" class="btn btn-primary">View Programs</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Courses</h5>
+                    <p class="card-text">Access and manage your course information.</p>
+                    <a href="{% url 'courses:course_list' %}" class="btn btn-primary">View Courses</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Profile</h5>
+                    <p class="card-text">View and update your profile information.</p>
+                    <a href="{% url 'profile' %}" class="btn btn-primary">View Profile</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

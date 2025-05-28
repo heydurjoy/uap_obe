@@ -1,0 +1,123 @@
+{% extends 'courses/base.html' %}
+
+{% block courses_content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Bulk Student Enrollment</h2>
+            <p class="text-muted">
+                {{ section.course.code }} - Section {{ section.section_number }}
+                <span class="ms-3">
+                    <i class="fas fa-calendar me-2"></i>{{ section.semester }} {{ section.year }}
+                </span>
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>Enroll Students
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="studentData" class="form-label">Student Data</label>
+                            <textarea class="form-control" id="studentData" name="student_data" rows="10" 
+                                    placeholder="Enter student data in the format:&#10;student_id, name&#10;student_id, name&#10;..."></textarea>
+                            <div class="form-text">
+                                Enter one student per line in the format: student_id, name
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Enroll Students
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Instructions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <h6>Format:</h6>
+                    <pre class="bg-light p-3 rounded">student_id, name
+student_id, name
+...</pre>
+                    
+                    <h6 class="mt-4">Example:</h6>
+                    <pre class="bg-light p-3 rounded">2021-1-60-001, John Doe
+2021-1-60-002, Jane Smith
+2021-1-60-003, Bob Johnson</pre>
+
+                    <div class="alert alert-info mt-4">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Tips:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Make sure to use a comma to separate student ID and name</li>
+                            <li>Each student should be on a new line</li>
+                            <li>Student IDs must be unique</li>
+                            <li>Students will be automatically assigned to the course's program</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('studentData');
+    
+    // Auto-resize textarea
+    textarea.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    });
+    
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const data = textarea.value.trim();
+        if (!data) {
+            e.preventDefault();
+            alert('Please enter student data');
+            return;
+        }
+        
+        const lines = data.split('\n');
+        const errors = [];
+        
+        lines.forEach((line, index) => {
+            if (line.trim()) {
+                const parts = line.split(',');
+                if (parts.length !== 2) {
+                    errors.push(`Line ${index + 1}: Invalid format. Expected "student_id, name"`);
+                } else if (!parts[0].trim() || !parts[1].trim()) {
+                    errors.push(`Line ${index + 1}: Student ID and name are required`);
+                }
+            }
+        });
+        
+        if (errors.length > 0) {
+            e.preventDefault();
+            alert('Please fix the following errors:\n\n' + errors.join('\n'));
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %} 

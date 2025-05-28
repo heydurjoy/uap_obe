@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Select Course for Section{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1>Select Course for Section</h1>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3 mb-md-0">
+            <select id="departmentFilter" class="form-select">
+                <option value="all">All Departments</option>
+                {% for dept in departments %}
+                    <option value="{{ dept.short_name }}" {% if dept.short_name == 'CSE' %}selected{% endif %}>{{ dept.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-8">
+            <div class="input-group">
+                <input type="text" id="courseSearch" class="form-control" placeholder="Search by course code, title, or program...">
+                <span class="input-group-text">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div id="courseList">
+        {% if courses %}
+            <div class="row g-4">
+                {% for course in courses %}
+                    <div class="col-md-6 col-lg-4 course-item" data-department="{{ course.program.department.short_name }}">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">{{ course.code }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">
+                                    <strong>Title:</strong> {{ course.title }}<br>
+                                    <strong>Program:</strong> {{ course.program.name }}<br>
+                                    <strong>Department:</strong> {{ course.program.department.name }}<br>
+                                    <strong>Credits:</strong> {{ course.credits }}<br>
+                                    <strong>Type:</strong> {% if course.is_lab %}Lab{% else %}Theory{% endif %}
+                                </p>
+                                <div class="d-flex flex-column gap-2">
+                                    <a href="{% url 'courses:create_section' course.pk %}" class="btn btn-primary">
+                                        <i class="fas fa-plus me-2"></i>Create Section
+                                    </a>
+                                    <a href="{% url 'courses:section_list' course.code %}" class="btn btn-outline-primary">
+                                        <i class="fas fa-list me-2"></i>View Sections
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>No courses found. 
+                <a href="{% url 'courses:course_create' %}" class="alert-link">Create a new course</a>.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('courseSearch');
+    const departmentFilter = document.getElementById('departmentFilter');
+    const courseItems = document.querySelectorAll('.course-item');
+    const courseList = document.getElementById('courseList');
+    const noResultsMessage = `
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>No courses found matching your search.
+        </div>
+    `;
+
+    function filterCourses() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedDepartment = departmentFilter.value;
+        let hasVisibleItems = false;
+
+        courseItems.forEach(function(item) {
+            const courseText = item.textContent.toLowerCase();
+            const courseDepartment = item.dataset.department;
+            const matchesSearch = courseText.includes(searchTerm);
+            const matchesDepartment = selectedDepartment === 'all' || courseDepartment === selectedDepartment;
+
+            if (matchesSearch && matchesDepartment) {
+                item.style.display = '';
+                hasVisibleItems = true;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // Show/hide no results message
+        const existingNoResults = courseList.querySelector('.alert-info');
+        if (!hasVisibleItems && !existingNoResults) {
+            courseList.insertAdjacentHTML('beforeend', noResultsMessage);
+        } else if (hasVisibleItems && existingNoResults) {
+            existingNoResults.remove();
+        }
+    }
+
+    // Add event listeners for both search and department filter
+    searchInput.addEventListener('input', filterCourses);
+    departmentFilter.addEventListener('change', filterCourses);
+
+    // Initial filter to show only CSE courses
+    filterCourses();
+});
+</script>
+{% endblock %} 

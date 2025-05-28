@@ -1,0 +1,120 @@
+{% extends 'courses/base.html' %}
+
+{% block courses_content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>{{ section.course.code }} - Section {{ section.section_number }}</h2>
+            <p class="text-muted">
+                <i class="fas fa-user me-2"></i>{{ section.teacher_name|default:"No Teacher Assigned" }}
+                <span class="ms-3">
+                    <i class="fas fa-calendar me-2"></i>{{ section.semester }} {{ section.year }}
+                </span>
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'courses:bulk_enroll' section.id %}" class="btn btn-success me-2">
+                <i class="fas fa-user-plus me-2"></i>Enroll Students
+            </a>
+            <a href="{% url 'courses:assessment_template' section.id %}" class="btn btn-info me-2">
+                <i class="fas fa-tasks me-2"></i>Assessment Template
+            </a>
+            <a href="{% url 'courses:enter_marks' section.id %}" class="btn btn-primary me-2">
+                <i class="fas fa-edit me-2"></i>Enter Marks
+            </a>
+            <a href="{% url 'courses:obe_analytics' section.id %}" class="btn btn-secondary">
+                <i class="fas fa-chart-bar me-2"></i>OBE Analytics
+            </a>
+        </div>
+    </div>
+
+    <!-- Assessment Template Summary -->
+    {% if template %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-tasks me-2"></i>Assessment Template
+                {% if template.is_public %}
+                <span class="badge bg-success ms-2">Public</span>
+                {% endif %}
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Type</th>
+                            <th>Weight</th>
+                            <th>CLO</th>
+                            <th>Alternative Group</th>
+                            <th>Best of</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for component in template.components.all %}
+                        <tr>
+                            <td>{{ component.name }}</td>
+                            <td>{{ component.get_component_type_display }}</td>
+                            <td>{{ component.weight }}%</td>
+                            <td>{{ component.clo.code }}</td>
+                            <td>{{ component.alternative_group|default:"-" }}</td>
+                            <td>{{ component.best_of_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Enrolled Students -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-users me-2"></i>Enrolled Students
+                <span class="badge bg-primary ms-2">{{ students.count }}</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Program</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ student.student_id }}</td>
+                            <td>{{ student.name }}</td>
+                            <td>{{ student.program.name }}</td>
+                            <td>
+                                <a href="{% url 'courses:student_history' student.student_id %}" 
+                                   class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-history me-1"></i>History
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">
+                                <div class="alert alert-info mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>No students enrolled in this section.
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

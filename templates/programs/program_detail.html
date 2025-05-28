@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ program.name }} - OBE System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{{ program.name }}</h4>
+                    <div class="btn-group">
+                        <a href="{% url 'programs:program_edit' program.pk %}" class="btn btn-light btn-sm">Edit</a>
+                        <a href="{% url 'programs:program_delete' program.pk %}" class="btn btn-light btn-sm">Delete</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5 class="text-muted mb-3">Program Information</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Code:</strong> {{ program.code }}</p>
+                                <p><strong>Department:</strong> {{ program.department }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Created:</strong> {{ program.created_at|date:"F j, Y" }}</p>
+                                <p><strong>Last Updated:</strong> {{ program.updated_at|date:"F j, Y" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <h5 class="text-muted mb-3">Description</h5>
+                        <p>{{ program.description|linebreaks }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Program Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Courses:</span>
+                                <span>{{ program.course_set.count }}</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Students:</span>
+                                <span>{{ program.student_set.count }}</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Faculty:</span>
+                                <span>{{ program.faculty_set.count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - OBE System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Welcome, {{ faculty.name }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="avatar-circle mb-3">
+                            <span class="initials">{{ faculty.short_name }}</span>
+                        </div>
+                        <h5 class="mb-1">{{ faculty.designation }}</h5>
+                        <p class="text-muted mb-0">{{ faculty.department }}</p>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Courses:</span>
+                                <span>{{ courses.count }}</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Sections:</span>
+                                <span>{{ sections.count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">My Courses</h4>
+                    <a href="{% url 'courses:course_list' %}" class="btn btn-light btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if courses %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Course Code</th>
+                                    <th>Title</th>
+                                    <th>Sections</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for course in courses %}
+                                <tr>
+                                    <td>{{ course.code }}</td>
+                                    <td>{{ course.title }}</td>
+                                    <td>{{ course.section_set.count }}</td>
+                                    <td>
+                                        <a href="{% url 'courses:course_detail' course.id %}" class="btn btn-sm btn-primary">View</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center mb-0">No courses assigned yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Recent Sections</h4>
+                </div>
+                <div class="card-body">
+                    {% if sections %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Course</th>
+                                    <th>Section</th>
+                                    <th>Semester</th>
+                                    <th>Students</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for section in sections|slice:":5" %}
+                                <tr>
+                                    <td>{{ section.course.code }}</td>
+                                    <td>{{ section.section_number }}</td>
+                                    <td>{{ section.semester }}</td>
+                                    <td>{{ section.student_set.count }}</td>
+                                    <td>
+                                        <a href="{% url 'courses:section_detail' section.id %}" class="btn btn-sm btn-primary">View</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center mb-0">No sections assigned yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_css %}
+<style>
+.avatar-circle {
+    width: 100px;
+    height: 100px;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.initials {
+    font-size: 2rem;
+    color: white;
+    font-weight: bold;
+}
+</style>
+{% endblock %}
+{% endblock %} 

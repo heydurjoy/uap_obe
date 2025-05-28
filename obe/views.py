@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 
 
 def home(request):
@@ -12,3 +13,12 @@ def home(request):
         context['user_level'] = 'not logged in'
 
     return render(request,'home.html', context)
+
+
+@login_required
+def dashboard(request):
+    context = {
+        'username': request.user.username,
+        'user_level': 'Superuser' if request.user.is_superuser else 'User'
+    }
+    return render(request, 'dashboard.html', context)

@@ -7,32 +7,118 @@
     <link rel="stylesheet" href="{% static 'css/home.css' %}">
 {% endblock %}
 
+{% block title %}Home - UAP OBE System{% endblock %}
+
 {% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="text-center mb-4">Welcome to UAP OBE System</h1>
+        </div>
+    </div>
 
-<div class="welcome-container">
-  <h1>Welcome to the UAP OBE+</h1>
-  <p>"One place to store, track, share, and manage marks automatically in an OBE system."</p>
+    <div class="row g-4">
+        <!-- Courses Card -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h3 class="mb-0"><i class="fas fa-book me-2"></i>Courses</h3>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Manage your courses, create sections, and track student performance.</p>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{% url 'courses:course_list' %}" class="btn btn-primary">
+                            <i class="fas fa-list me-2"></i>View Courses
+                        </a>
+                        <a href="{% url 'courses:course_create' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-plus me-2"></i>Add New Course
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-  <h2>Hello, {{ username }} 👋</h2>
-  <div class="level-badge">You are a {{ user_level }}</div>
-</div>
+        <!-- Sections Card -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h3 class="mb-0"><i class="fas fa-chalkboard-teacher me-2"></i>Sections</h3>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Manage course sections, assign faculties, and track section performance.</p>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{% url 'courses:all_sections' %}" class="btn btn-primary">
+                            <i class="fas fa-list me-2"></i>View Sections
+                        </a>
+                        <a href="{% url 'courses:select_course' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-plus me-2"></i>Create Section
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<div class="access-heading">You have the following access:</div>
+        <!-- Programs Card -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h3 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Programs</h3>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Manage academic programs, PLOs, and track program outcomes.</p>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{% url 'programs:program_list' %}" class="btn btn-primary">
+                            <i class="fas fa-list me-2"></i>View Programs
+                        </a>
+                        <a href="{% url 'programs:program_create' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-plus me-2"></i>Add New Program
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<div class="card-grid">
-  <div class="access-card">
-    <div class="card-title">Manage the Userbase</div>
-    <div class="card-desc">Add, edit, and control all users in the system.</div>
-  </div>
+        <!-- Analytics Card -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h3 class="mb-0"><i class="fas fa-chart-line me-2"></i>Analytics</h3>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">View detailed analytics and reports for courses and programs.</p>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{% url 'programs:program_list' %}" class="btn btn-primary">
+                            <i class="fas fa-chart-bar me-2"></i>Program Analytics
+                        </a>
+                        <a href="{% url 'courses:course_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-chart-pie me-2"></i>Course Analytics
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-  <div class="access-card">
-    <div class="card-title">Manage Course Assessment</div>
-    <div class="card-desc">Configure and update course assessments dynamically.</div>
-  </div>
-
-  <div class="access-card">
-    <div class="card-title">See Course-wise History</div>
-    <div class="card-desc">View detailed performance logs and history by course.</div>
-  </div>
+        <!-- Settings Card -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h3 class="mb-0"><i class="fas fa-cog me-2"></i>Settings</h3>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Configure system settings and manage user accounts.</p>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{% url 'accounts:profile' %}" class="btn btn-primary">
+                            <i class="fas fa-user me-2"></i>Profile Settings
+                        </a>
+                        {% if user.is_superuser %}
+                        <a href="{% url 'admin:index' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-shield-alt me-2"></i>Admin Panel
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

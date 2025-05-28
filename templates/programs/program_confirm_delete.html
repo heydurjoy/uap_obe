@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete {{ program.name }} - OBE System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Delete Program</h4>
+                </div>
+                <div class="card-body">
+                    <p class="mb-4">Are you sure you want to delete the program "{{ program.name }}"? This action cannot be undone.</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">Delete Program</button>
+                            <a href="{% url 'programs:program_detail' program.pk %}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

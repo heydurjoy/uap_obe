@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.pk %}Edit{% else %}Add{% endif %} Course - UAP OBE System{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">{% if form.instance.pk %}Edit{% else %}Add{% endif %} Course</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.code.id_for_label }}" class="form-label">Course Code</label>
+                            {{ form.code }}
+                            {% if form.code.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.code.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">Course Title</label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.title.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.program.id_for_label }}" class="form-label">Program</label>
+                            {{ form.program }}
+                            {% if form.program.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.program.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.credits.id_for_label }}" class="form-label">Credits</label>
+                            {{ form.credits }}
+                            {% if form.credits.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.credits.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.description.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            {{ form.is_lab }}
+                            <label class="form-check-label" for="{{ form.is_lab.id_for_label }}">
+                                Is this a lab course?
+                            </label>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'courses:course_list' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">
+                                {% if form.instance.pk %}Update{% else %}Create{% endif %} Course
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

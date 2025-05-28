@@ -1,0 +1,198 @@
+{% extends 'courses/base.html' %}
+
+{% block courses_content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Student Attainment History</h2>
+            <p class="text-muted">
+                {{ student.student_id }} - {{ student.name }}
+                <span class="ms-3">
+                    <i class="fas fa-graduation-cap me-2"></i>{{ student.program.name }}
+                </span>
+            </p>
+        </div>
+    </div>
+
+    <!-- CLO Attainment History -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-chart-line me-2"></i>CLO Attainment History
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Semester</th>
+                            {% for clo in clos %}
+                            <th>{{ clo.code }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for semester, clo_data in attainment_history.items %}
+                        <tr>
+                            <td>{{ semester }}</td>
+                            {% for clo in clos %}
+                            <td>
+                                {% with attainment=clo_data|get_item:clo.code %}
+                                {% if attainment %}
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar {% if attainment >= 70 %}bg-success{% elif attainment >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ attainment }}%"
+                                         aria-valuenow="{{ attainment }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ attainment|floatformat:1 }}%
+                                    </div>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                                {% endwith %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PLO Attainment History -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-chart-bar me-2"></i>PLO Attainment History
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Semester</th>
+                            {% for plo in plos %}
+                            <th>{{ plo.code }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for semester, plo_data in plo_history.items %}
+                        <tr>
+                            <td>{{ semester }}</td>
+                            {% for plo in plos %}
+                            <td>
+                                {% with attainment=plo_data|get_item:plo.code %}
+                                {% if attainment %}
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar {% if attainment >= 70 %}bg-success{% elif attainment >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ attainment }}%"
+                                         aria-valuenow="{{ attainment }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ attainment|floatformat:1 }}%
+                                    </div>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                                {% endwith %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attainment Trends -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-chart-area me-2"></i>Attainment Trends
+            </h5>
+        </div>
+        <div class="card-body">
+            <canvas id="attainmentChart"></canvas>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('attainmentChart').getContext('2d');
+    
+    // Prepare data for the chart
+    const semesters = {{ semesters|safe }};
+    const cloData = {{ clo_chart_data|safe }};
+    const ploData = {{ plo_chart_data|safe }};
+    
+    // Create datasets for each CLO
+    const cloDatasets = Object.entries(cloData).map(([clo, data], index) => ({
+        label: clo,
+        data: data,
+        borderColor: `hsl(${index * 360 / Object.keys(cloData).length}, 70%, 50%)`,
+        fill: false,
+        tension: 0.1
+    }));
+    
+    // Create datasets for each PLO
+    const ploDatasets = Object.entries(ploData).map(([plo, data], index) => ({
+        label: plo,
+        data: data,
+        borderColor: `hsl(${index * 360 / Object.keys(ploData).length}, 70%, 50%)`,
+        borderDash: [5, 5],
+        fill: false,
+        tension: 0.1
+    }));
+    
+    // Combine datasets
+    const datasets = [...cloDatasets, ...ploDatasets];
+    
+    // Create the chart
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: semesters,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'CLO and PLO Attainment Trends'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Attainment (%)'
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %} 

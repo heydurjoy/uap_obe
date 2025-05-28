@@ -1,0 +1,131 @@
+{% extends 'courses/base.html' %}
+
+{% block courses_content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>OBE Analytics</h2>
+            <p class="text-muted">
+                {{ section.course.code }} - Section {{ section.section_number }}
+                <span class="ms-3">
+                    <i class="fas fa-calendar me-2"></i>{{ section.semester }} {{ section.year }}
+                </span>
+            </p>
+        </div>
+    </div>
+
+    <!-- CLO Attainment -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-chart-line me-2"></i>CLO Attainment
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            {% for clo in section.course.clos.all %}
+                            <th>{{ clo.code }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student_id, clo_data in clo_attainments.items %}
+                        <tr>
+                            <td>{{ student_id }}</td>
+                            <td>{{ students|get_item:student_id }}</td>
+                            {% for clo in section.course.clos.all %}
+                            <td>
+                                {% with attainment=clo_data|get_item:clo.code %}
+                                {% if attainment %}
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar {% if attainment >= 70 %}bg-success{% elif attainment >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ attainment }}%"
+                                         aria-valuenow="{{ attainment }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ attainment|floatformat:1 }}%
+                                    </div>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                                {% endwith %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PLO Attainment -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-chart-bar me-2"></i>PLO Attainment
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            {% for plo in plos %}
+                            <th>{{ plo.code }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student_id, plo_data in plo_attainments.items %}
+                        <tr>
+                            <td>{{ student_id }}</td>
+                            <td>{{ students|get_item:student_id }}</td>
+                            {% for plo in plos %}
+                            <td>
+                                {% with attainment=plo_data|get_item:plo.code %}
+                                {% if attainment %}
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar {% if attainment >= 70 %}bg-success{% elif attainment >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ attainment }}%"
+                                         aria-valuenow="{{ attainment }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ attainment|floatformat:1 }}%
+                                    </div>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                                {% endwith %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add any additional JavaScript for charts or data visualization here
+});
+</script>
+{% endblock %}
+{% endblock %} 

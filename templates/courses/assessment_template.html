@@ -1,0 +1,238 @@
+{% extends 'courses/base.html' %}
+
+{% block courses_content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Assessment Template</h2>
+            <p class="text-muted">
+                {{ section.course.code }} - Section {{ section.section_number }}
+                <span class="ms-3">
+                    <i class="fas fa-calendar me-2"></i>{{ section.semester }} {{ section.year }}
+                </span>
+            </p>
+        </div>
+    </div>
+
+    <form method="post" id="templateForm">
+        {% csrf_token %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>Template Settings
+                    </h5>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="isPublic" name="is_public"
+                               {% if template.is_public %}checked{% endif %}>
+                        <label class="form-check-label" for="isPublic">Make Template Public</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>Assessment Components
+                    </h5>
+                    <button type="button" class="btn btn-primary btn-sm" id="addComponent">
+                        <i class="fas fa-plus me-2"></i>Add Component
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="componentsContainer">
+                    {% for component in template.components.all %}
+                    <div class="component-item card mb-3">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">Component Name</label>
+                                        <input type="text" class="form-control" name="components[{{ forloop.counter0 }}][name]"
+                                               value="{{ component.name }}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="mb-3">
+                                        <label class="form-label">Type</label>
+                                        <select class="form-select" name="components[{{ forloop.counter0 }}][type]" required>
+                                            <option value="THEORY" {% if component.component_type == 'THEORY' %}selected{% endif %}>Theory</option>
+                                            <option value="LAB" {% if component.component_type == 'LAB' %}selected{% endif %}>Lab</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="mb-3">
+                                        <label class="form-label">Weight (%)</label>
+                                        <input type="number" class="form-control" name="components[{{ forloop.counter0 }}][weight]"
+                                               value="{{ component.weight }}" min="0" max="100" step="0.01" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="mb-3">
+                                        <label class="form-label">CLO</label>
+                                        <select class="form-select" name="components[{{ forloop.counter0 }}][clo]" required>
+                                            {% for clo in section.course.clos.all %}
+                                            <option value="{{ clo.id }}" {% if component.clo == clo %}selected{% endif %}>
+                                                {{ clo.code }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="mb-3">
+                                        <label class="form-label">Alt. Group</label>
+                                        <input type="text" class="form-control" name="components[{{ forloop.counter0 }}][alt_group]"
+                                               value="{{ component.alternative_group|default:'' }}" placeholder="e.g., CT1,CT2">
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="mb-3">
+                                        <label class="form-label">Best of</label>
+                                        <input type="number" class="form-control" name="components[{{ forloop.counter0 }}][best_of]"
+                                               value="{{ component.best_of_count }}" min="1" max="3">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="components[{{ forloop.counter0 }}][visible]"
+                                               id="visible{{ forloop.counter0 }}" {% if component.is_visible_to_students %}checked{% endif %}>
+                                        <label class="form-check-label" for="visible{{ forloop.counter0 }}">
+                                            Visible to Students
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <button type="button" class="btn btn-danger btn-sm remove-component">
+                                <i class="fas fa-trash me-2"></i>Remove
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Save Template
+            </button>
+        </div>
+    </form>
+</div>
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('componentsContainer');
+    const addButton = document.getElementById('addComponent');
+    let componentCount = {{ template.components.count }};
+
+    // Add new component
+    addButton.addEventListener('click', function() {
+        const template = `
+            <div class="component-item card mb-3">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Component Name</label>
+                                <input type="text" class="form-control" name="components[${componentCount}][name]" required>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label class="form-label">Type</label>
+                                <select class="form-select" name="components[${componentCount}][type]" required>
+                                    <option value="THEORY">Theory</option>
+                                    <option value="LAB">Lab</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label class="form-label">Weight (%)</label>
+                                <input type="number" class="form-control" name="components[${componentCount}][weight]"
+                                       min="0" max="100" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label class="form-label">CLO</label>
+                                <select class="form-select" name="components[${componentCount}][clo]" required>
+                                    {% for clo in section.course.clos.all %}
+                                    <option value="{{ clo.id }}">{{ clo.code }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label class="form-label">Alt. Group</label>
+                                <input type="text" class="form-control" name="components[${componentCount}][alt_group]"
+                                       placeholder="e.g., CT1,CT2">
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <div class="mb-3">
+                                <label class="form-label">Best of</label>
+                                <input type="number" class="form-control" name="components[${componentCount}][best_of]"
+                                       value="1" min="1" max="3">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="components[${componentCount}][visible]"
+                                       id="visible${componentCount}" checked>
+                                <label class="form-check-label" for="visible${componentCount}">
+                                    Visible to Students
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <button type="button" class="btn btn-danger btn-sm remove-component">
+                        <i class="fas fa-trash me-2"></i>Remove
+                    </button>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', template);
+        componentCount++;
+    });
+
+    // Remove component
+    container.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-component') || e.target.closest('.remove-component')) {
+            const component = e.target.closest('.component-item');
+            component.remove();
+        }
+    });
+
+    // Form validation
+    document.getElementById('templateForm').addEventListener('submit', function(e) {
+        const weights = Array.from(document.querySelectorAll('input[name$="[weight]"]'))
+            .map(input => parseFloat(input.value) || 0);
+        const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+        
+        if (Math.abs(totalWeight - 100) > 0.01) {
+            e.preventDefault();
+            alert('Total weight must equal 100%');
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %} 

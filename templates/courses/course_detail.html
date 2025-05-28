@@ -1,0 +1,249 @@
+{% extends 'courses/base.html' %}
+
+{% block title %}{{ course.code }} - {{ course.title }} - UAP OBE System{% endblock %}
+
+{% block course_title %}{{ course.code }} - {{ course.title }}{% endblock %}
+
+{% block course_details %}
+<div class="row">
+    <div class="col-md-6">
+        <p class="mb-0">
+            <span class="badge bg-primary me-2">{{ course.credits }} Credits</span>
+            <span class="badge bg-secondary me-2">{{ course.program.name }}</span>
+            {% if course.is_lab %}
+            <span class="badge bg-info">Lab Course</span>
+            {% endif %}
+        </p>
+    </div>
+    <div class="col-md-6 text-md-end">
+        {% if user.is_teacher %}
+        <a href="{% url 'courses:course_edit' course.id %}" class="btn btn-outline-primary me-2">
+            <i class="fas fa-edit me-1"></i>Edit Course
+        </a>
+        <a href="{% url 'courses:course_delete' course.id %}" class="btn btn-outline-danger">
+            <i class="fas fa-trash me-1"></i>Delete Course
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block course_content %}
+<div class="row">
+    <!-- Course Information -->
+    <div class="col-md-4">
+        <div class="card course-card mb-4">
+            <div class="card-header">
+                <i class="fas fa-info-circle me-2"></i>Course Information
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Code</dt>
+                    <dd class="col-sm-8">{{ course.code }}</dd>
+
+                    <dt class="col-sm-4">Title</dt>
+                    <dd class="col-sm-8">{{ course.title }}</dd>
+
+                    <dt class="col-sm-4">Credits</dt>
+                    <dd class="col-sm-8">{{ course.credits }}</dd>
+
+                    <dt class="col-sm-4">Program</dt>
+                    <dd class="col-sm-8">{{ course.program.name }}</dd>
+
+                    <dt class="col-sm-4">Type</dt>
+                    <dd class="col-sm-8">
+                        {% if course.is_lab %}
+                        <span class="badge bg-info">Lab Course</span>
+                        {% else %}
+                        <span class="badge bg-primary">Theory Course</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+                {% if course.description %}
+                <hr>
+                <h6>Description</h6>
+                <p class="text-muted">{{ course.description }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Course Learning Outcomes -->
+        <div class="card course-card mb-4">
+            <div class="card-header">
+                <i class="fas fa-bullseye me-2"></i>Course Learning Outcomes
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    {% for clo in course.clos.all %}
+                    <div class="list-group-item px-0">
+                        <h6 class="mb-1">{{ clo.code }}</h6>
+                        <p class="mb-0 text-muted">{{ clo.description }}</p>
+                        <div class="mt-2">
+                            {% for plo in clo.plos.all %}
+                            <span class="badge bg-secondary me-1">{{ plo.code }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>No CLOs defined yet.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Course Sections -->
+    <div class="col-md-8">
+        <div class="card course-card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-users me-2"></i>Course Sections</span>
+                {% if user.is_teacher %}
+                <a href="{% url 'courses:create_section' course.pk %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-1"></i>Add Section
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Section</th>
+                                <th>Teacher</th>
+                                <th>Semester</th>
+                                <th>Year</th>
+                                <th>Students</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for section in course.sections.all %}
+                            <tr>
+                                <td>{{ section.section_number }}</td>
+                                <td>{{ section.teacher_name|default:"Not Assigned" }}</td>
+                                <td>{{ section.semester }}</td>
+                                <td>{{ section.year }}</td>
+                                <td>{{ section.enrollment_set.count }}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{% url 'courses:section_detail' section.id %}" 
+                                           class="btn btn-outline-primary btn-sm"
+                                           data-bs-toggle="tooltip"
+                                           title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if user.is_teacher %}
+                                        <a href="{% url 'courses:bulk_enroll' section.id %}" 
+                                           class="btn btn-outline-success btn-sm"
+                                           data-bs-toggle="tooltip"
+                                           title="Enroll Students">
+                                            <i class="fas fa-user-plus"></i>
+                                        </a>
+                                        <a href="{% url 'courses:assessment_template' section.id %}" 
+                                           class="btn btn-outline-info btn-sm"
+                                           data-bs-toggle="tooltip"
+                                           title="Assessment Template">
+                                            <i class="fas fa-tasks"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <div class="alert alert-info mb-0">
+                                        <i class="fas fa-info-circle me-2"></i>No sections found.
+                                        {% if user.is_teacher %}
+                                        <a href="{% url 'courses:create_section' course.pk %}" class="alert-link">Add your first section</a>.
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assessment Components -->
+        <div class="card course-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-tasks me-2"></i>Assessment Components</span>
+                {% if user.is_teacher %}
+                <a href="{% url 'courses:component_create' course.id %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-1"></i>Add Component
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Weight</th>
+                                <th>CLO</th>
+                                <th>Alt. Group</th>
+                                <th>Best of</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for component in course.assessmentcomponent_set.all %}
+                            <tr>
+                                <td>{{ component.name }}</td>
+                                <td>{{ component.get_component_type_display }}</td>
+                                <td>{{ component.weight }}%</td>
+                                <td>{{ component.clo.code }}</td>
+                                <td>{{ component.alternative_group|default:"-" }}</td>
+                                <td>{{ component.best_of_count }}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{% url 'courses:component_detail' component.id %}" 
+                                           class="btn btn-outline-primary btn-sm"
+                                           data-bs-toggle="tooltip"
+                                           title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if user.is_teacher %}
+                                        <a href="{% url 'courses:component_edit' component.id %}" 
+                                           class="btn btn-outline-primary btn-sm"
+                                           data-bs-toggle="tooltip"
+                                           title="Edit Component">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'courses:component_delete' component.id %}" 
+                                           class="btn btn-outline-danger btn-sm"
+                                           data-bs-toggle="tooltip"
+                                           title="Delete Component">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center">
+                                    <div class="alert alert-info mb-0">
+                                        <i class="fas fa-info-circle me-2"></i>No assessment components found.
+                                        {% if user.is_teacher %}
+                                        <a href="{% url 'courses:component_create' course.id %}" class="alert-link">Add your first component</a>.
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
