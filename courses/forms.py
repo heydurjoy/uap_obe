@@ -1,5 +1,5 @@
 from django import forms
-from .models import Course, Section, Faculty
+from .models import Course, Section, Faculty, Student, Enrollment
 from django.utils import timezone
 from accounts.models import Faculty
 
@@ -87,4 +87,28 @@ class SectionForm(forms.ModelForm):
             section.faculties.add(self.cleaned_data['primary_faculty'])
             if self.cleaned_data['secondary_faculty']:
                 section.faculties.add(self.cleaned_data['secondary_faculty'])
-        return section 
+        return section
+
+class BulkEnrollForm(forms.Form):
+    student_ids = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 10,
+            'placeholder': 'Paste student IDs here (one per line)'
+        })
+    )
+    student_names = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 10,
+            'placeholder': 'Paste student names here (one per line)'
+        })
+    )
+
+class EnrollmentForm(forms.ModelForm):
+    class Meta:
+        model = Enrollment
+        fields = ['enrollment_type']
+        widgets = {
+            'enrollment_type': forms.Select(attrs={'class': 'form-select'})
+        } 

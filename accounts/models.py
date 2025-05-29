@@ -40,6 +40,9 @@ class Faculty(models.Model):
 
     @property
     def access_level(self):
+        # Give superusers the same access level as level 1 users
+        if self.user.is_superuser:
+            return 1
         return self.allowed_email.level
 
     def can_create_section(self):
@@ -60,4 +63,6 @@ class Faculty(models.Model):
 
     def get_access_level_display(self):
         """Get the display name of the access level"""
+        if self.user.is_superuser:
+            return "Superuser"
         return dict(AllowedEmail.LEVEL_CHOICES).get(self.access_level, 'Unknown')

@@ -70,12 +70,25 @@ class Enrollment(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     section = models.ForeignKey(Section, on_delete=models.CASCADE)
     enrollment_date = models.DateTimeField(auto_now_add=True)
-    
+
+    ENROLLMENT_CHOICES = [
+        ('Regular', 'Regular'),
+        ('Backlog', 'Backlog'),
+        ('Self-Study', 'Self-Study'),
+        # Add more choices here as needed
+    ]
+
+    enrollment_type = models.CharField(
+        max_length=50, 
+        choices=ENROLLMENT_CHOICES, 
+        default='Regular'
+    )
+
     class Meta:
-        unique_together = ['student', 'section']
-    
+        unique_together = ('student', 'section')
+
     def __str__(self):
-        return f"{self.student.student_id} in {self.section}"
+        return f'{self.student.name} in {self.section.course.code} Section {self.section.name}'
 
 class AssessmentTemplate(models.Model):
     section = models.OneToOneField(Section, on_delete=models.CASCADE)
@@ -132,3 +145,26 @@ class Attainment(models.Model):
     
     def __str__(self):
         return f"{self.student.student_id} - {self.clo.code}: {self.attainment_value}"
+
+# New models for project groups
+class ProjectGroup(models.Model):
+    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='project_groups')
+    group_sl = models.IntegerField() # Group Serial Number
+    project_name = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        unique_together = ['section', 'group_sl']
+        ordering = ['section', 'group_sl']
+
+    def __str__(self):
+        return f'Group {self.group_sl} ({self.section.name})'
+
+class ProjectGroupEnrollment(models.Model):
+    project_group = models.ForeignKey(ProjectGroup, on_delete=models.CASCADE, related_name='enrollments')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ['project_group', 'student']
+
+    def __str__(self):
+        return f'{self.student.name} in {self.project_group}'

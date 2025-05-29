@@ -7,7 +7,7 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card shadow">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header bg-danger text-white">
                     <h4 class="mb-0">{{ title }}</h4>
                 </div>
                 <div class="card-body">
@@ -21,31 +21,31 @@
                     </div>
                     {% endif %}
 
-                    <p class="card-text text-muted">Paste student IDs and names below, one per line, ensuring the lists are in the same order.</p>
+                    <p class="card-text text-muted">The following students were found with existing IDs but different names. Please choose which name to keep for each student.</p>
 
                     <form method="post" novalidate>
                         {% csrf_token %}
 
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="{{ form.student_ids.id_for_label }}" class="form-label">Student IDs</label>
-                                {{ form.student_ids }}
-                                {% if form.student_ids.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {{ form.student_ids.errors }}
-                                </div>
-                                {% endif %}
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label">{{ field.label }}</label>
+                            <div class="form-check">
+                                {% for radio in field %}
+                                    <div class="form-check">
+                                        {{ radio.tag }}
+                                        <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                            {{ radio.choice_label }}
+                                        </label>
+                                    </div>
+                                {% endfor %}
                             </div>
-                            <div class="col-md-6">
-                                <label for="{{ form.student_names.id_for_label }}" class="form-label">Student Names</label>
-                                {{ form.student_names }}
-                                {% if form.student_names.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {{ form.student_names.errors }}
-                                </div>
-                                {% endif %}
+                            {% if field.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ field.errors }}
                             </div>
+                            {% endif %}
                         </div>
+                        {% endfor %}
 
                         {% if form.non_field_errors %}
                         <div class="alert alert-danger mt-3">
@@ -54,11 +54,11 @@
                         {% endif %}
 
                         <div class="d-grid gap-2 mt-4">
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-user-plus me-2"></i>Enroll Students
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-check-circle me-2"></i>Resolve Conflicts and Continue Enrollment
                             </button>
-                            <a href="{% url 'courses:section_detail' section.id %}" class="btn btn-outline-secondary">
-                                <i class="fas fa-times me-2"></i>Cancel
+                            <a href="{% url 'courses:bulk_enroll' section.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel and Go Back to Bulk Enroll
                             </a>
                         </div>
                     </form>
@@ -88,8 +88,8 @@
     font-size: 0.875rem;
 }
 
-.form-text {
-    font-size: 0.75rem;
+.form-check-label {
+    margin-left: 0.5rem;
 }
 
 [data-bs-theme="dark"] .card {

@@ -4,26 +4,41 @@ from . import views
 app_name = 'courses'
 
 urlpatterns = [
-    path('', views.course_list, name='course_list'),
-    path('create/', views.course_create, name='course_create'),
-    path('<int:pk>/update/', views.course_update, name='course_update'),
-    path('<int:pk>/delete/', views.course_delete, name='course_delete'),
+    path('courses/', views.course_list, name='course_list'),
+    path('courses/create/', views.course_create, name='course_create'),
+    path('courses/<int:pk>/edit/', views.course_update, name='course_update'),
+    path('courses/<int:pk>/delete/', views.course_delete, name='course_delete'),
+    path('courses/<str:course_code>/sections/', views.section_list, name='section_list'),
+    path('sections/<int:section_id>/', views.section_detail, name='section_detail'),
+    path('courses/<int:course_id>/sections/create/', views.create_section, name='create_section'),
+    path('courses/select-course/', views.select_course, name='select_course'),
+    
+    # Bulk enrollment URLs
+    path('sections/<int:section_id>/enroll/', views.bulk_enroll_view, name='bulk_enroll'),
+    path('sections/<int:section_id>/enroll/resolve-conflicts/', views.resolve_conflicts_view, name='resolve_conflicts'),
     
     # Section URLs
-    path('sections/', views.all_sections, name='all_sections'),
-    path('sections/create/<int:course_id>/', views.create_section, name='create_section'),
-    path('sections/<int:section_id>/', views.section_detail, name='section_detail'),
-    path('sections/<int:section_id>/enroll/', views.bulk_enroll_students, name='bulk_enroll'),
+    path('sections/<int:f_id>', views.all_sections, name='all_sections'),
     path('sections/<int:section_id>/template/', views.assessment_template, name='assessment_template'),
     path('sections/<int:section_id>/marks/', views.enter_marks, name='enter_marks'),
     path('sections/<int:section_id>/analytics/', views.obe_analytics, name='obe_analytics'),
     
-    # Course-specific section URLs
-    path('<str:course_code>/sections/', views.section_list, name='section_list'),
+    # Single enrollment URL
+    path('sections/<int:section_id>/single-enroll/', views.single_enroll_view, name='single_enroll'),
+    
+    # AJAX student search URL
+    path('ajax/search-students/', views.search_students_ajax, name='search_students_ajax'),
+    
+    # Enrollment management URLs
+    path('enrollments/<int:enrollment_id>/edit/', views.edit_enrollment_view, name='edit_enrollment'),
+    path('enrollments/<int:enrollment_id>/delete/', views.delete_enrollment_view, name='delete_enrollment'),
+    
+    # Project group management URL
+    path('sections/<int:section_id>/project-groups/', views.manage_project_groups_view, name='manage_project_groups'),
+    
+    # Section editing URL
+    path('sections/<int:section_id>/edit/', views.edit_section_view, name='edit_section'),
     
     # Student attainment URLs
     path('students/<str:student_id>/attainment/', views.student_attainment_history, name='student_attainment'),
-    
-    # Course selection URL
-    path('select-course/', views.select_course, name='select_course'),
 ] 

@@ -252,13 +252,13 @@
                 </a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="{% url 'logout' %}">
-                  <i class="fas fa-sign-out-alt me-2"></i>Logout
+                  <i class="fas fa-sign-out-alt me-1"></i>Logout
                 </a></li>
               </ul>
             </li>
           {% else %}
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'accounts:login' %}">
+              <a class="nav-link" href="{% url 'login' %}">
                 <i class="fas fa-sign-in-alt me-1"></i>Login
               </a>
             </li>
@@ -268,18 +268,26 @@
     </div>
   </nav>
 
+  <!-- Messages as Toast Notifications -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11;">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="toast align-items-center text-white bg-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}primary{% endif %} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        {{ message }}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+  </div>
+
   <!-- Main Content -->
   <div class="container">
-    {% if messages %}
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-          {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-      {% endfor %}
-    {% endif %}
-
-    {% block content %}{% endblock %}
+    {% block content %}
+    {% endblock %}
   </div>
 
   <!-- Footer -->
@@ -334,6 +342,15 @@
           var bsAlert = new bootstrap.Alert(alert);
         });
       }, 5000);
+    });
+
+    // Custom JS to show toasts
+    document.addEventListener('DOMContentLoaded', function() {
+        const toastElList = document.querySelectorAll('.toast');
+        toastElList.forEach(toastEl => {
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        });
     });
   </script>
   {% block extra_js %}{% endblock %}

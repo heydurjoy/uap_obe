@@ -1,125 +1,387 @@
-{% extends 'courses/base.html' %}
+{% extends 'base.html' %}
 
-{% block courses_content %}
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2>{{ section.course.code }} - Section {{ section.name }}</h2>
-            <p class="text-muted">
-                <i class="fas fa-user me-2"></i>Primary: {{ section.primary_faculty.name }}
-                {% if section.secondary_faculty %}
-                <span class="ms-3">
-                    <i class="fas fa-user-friends me-2"></i>Secondary: {{ section.secondary_faculty.name }}
-                </span>
-                {% endif %}
-                <span class="ms-3">
-                    <i class="fas fa-calendar me-2"></i>{{ section.semester }} {{ section.year }}
-                </span>
-            </p>
-        </div>
-        <div>
-            <a href="{% url 'courses:bulk_enroll' section.id %}" class="btn btn-success me-2">
-                <i class="fas fa-user-plus me-2"></i>Enroll Students
-            </a>
-            <a href="{% url 'courses:assessment_template' section.id %}" class="btn btn-info me-2">
-                <i class="fas fa-tasks me-2"></i>Assessment Template
-            </a>
-            <a href="{% url 'courses:enter_marks' section.id %}" class="btn btn-primary me-2">
-                <i class="fas fa-edit me-2"></i>Enter Marks
-            </a>
-            <a href="{% url 'courses:obe_analytics' section.id %}" class="btn btn-secondary">
-                <i class="fas fa-chart-bar me-2"></i>OBE Analytics
-            </a>
-        </div>
-    </div>
+{% block title %}{{ title }}{% endblock %}
 
-    <!-- Assessment Template Summary -->
-    {% if template %}
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-tasks me-2"></i>Assessment Template
-                {% if template.is_public %}
-                <span class="badge bg-success ms-2">Public</span>
-                {% endif %}
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Component</th>
-                            <th>Type</th>
-                            <th>Weight</th>
-                            <th>CLO</th>
-                            <th>Alternative Group</th>
-                            <th>Best of</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for component in template.components.all %}
-                        <tr>
-                            <td>{{ component.name }}</td>
-                            <td>{{ component.get_component_type_display }}</td>
-                            <td>{{ component.weight }}%</td>
-                            <td>{{ component.clo.code }}</td>
-                            <td>{{ component.alternative_group|default:"-" }}</td>
-                            <td>{{ component.best_of_count }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+{% block content %}
+<div class="container py-5">
+    <!-- Section Information -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title mb-3">{{ section.course.code }} - {{ section.course.title }}</h4>
+                            <p class="card-text">
+                                <strong>Section:</strong> {{ section.name }}<br>
+                                <strong>Semester:</strong> {{ section.semester }} {{ section.year }}<br>
+                                <strong>Primary Faculty:</strong> {{ section.primary_faculty.name }}
+                                {% if section.secondary_faculty %}
+                                <br><strong>Secondary Faculty:</strong> {{ section.secondary_faculty.name }}
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'courses:bulk_enroll' section.id %}" class="btn btn-primary py-2">
+                                <i class="fas fa-link me-2"></i>CLO-PLO Mapping
+                            </a>
+                            <a href="{% url 'courses:bulk_enroll' section.id %}" class="btn btn-primary py-2">
+                                <i class="fas fa-user-plus me-2"></i>Bulk Enroll Students
+                            </a>
+                             <a href="{% url 'courses:bulk_enroll' section.id %}" class="btn btn-primary py-2">
+                                <i class="fas fa-tasks me-2"></i>Assessment Setup
+                            </a>
+                            <a href="{% url 'courses:manage_project_groups' section.id %}" class="btn btn-primary py-2">
+                                <i class="fas fa-users me-2"></i>Manage Project Groups
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    {% endif %}
 
-    <!-- Enrolled Students -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-users me-2"></i>Enrolled Students
-                <span class="badge bg-primary ms-2">{{ students.count }}</span>
-            </h5>
+    <!-- Edit Section Button -->
+    <div class="row mb-3">
+        <div class="col-12 text-end">
+            <a href="{% url 'courses:edit_section' section.id %}" class="btn btn-outline-secondary btn-sm">
+                 <i class="fas fa-edit me-2"></i>Edit Section Details
+             </a>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Student ID</th>
-                            <th>Name</th>
-                            <th>Program</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for student in students %}
-                        <tr>
-                            <td>{{ student.student_id }}</td>
-                            <td>{{ student.name }}</td>
-                            <td>{{ student.program.name }}</td>
-                            <td>
-                                <a href="{% url 'courses:student_history' student.student_id %}" 
-                                   class="btn btn-sm btn-outline-info">
-                                    <i class="fas fa-history me-1"></i>History
-                                </a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center">
-                                <div class="alert alert-info mb-0">
-                                    <i class="fas fa-info-circle me-2"></i>No students enrolled in this section.
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs mb-3" id="sectionTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="enrollment-tab" data-bs-toggle="tab" data-bs-target="#enrollment" type="button" role="tab" aria-controls="enrollment" aria-selected="true">Enrollment</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab" aria-controls="attendance" aria-selected="false">Attendance</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="marks-tab" data-bs-toggle="tab" data-bs-target="#marks" type="button" role="tab" aria-controls="marks" aria-selected="false">Marks</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="copo-tab" data-bs-toggle="tab" data-bs-target="#copo" type="button" role="tab" aria-controls="copo" aria-selected="false">CO-PO</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="escr-tab" data-bs-toggle="tab" data-bs-target="#escr" type="button" role="tab" aria-controls="escr" aria-selected="false">ESCAR</button>
+        </li>
+    </ul>
+
+    <!-- Tabs Content -->
+    <div class="tab-content" id="sectionTabsContent">
+        <!-- Enrollment Tab Pane -->
+        <div class="tab-pane fade show active" id="enrollment" role="tabpanel" aria-labelledby="enrollment-tab">
+            <!-- Enrolled Students -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-users me-2"></i>
+                                Enrolled Students
+                            </h5>
+                            <span class="badge bg-light text-dark">{{ enrollments|length }} Students</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <form action="{% url 'courses:single_enroll' section.id %}" method="post" class="d-flex">
+                                    {% csrf_token %}
+                                    <div class="position-relative flex-grow-1 me-2">
+                                         <input type="text" name="student_identifier" id="student-identifier-input" class="form-control" placeholder="Enter Student ID or Name" required>
+                                         <div id="student-suggestions" class="list-group position-absolute w-100" style="z-index: 1000; display: none;"></div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-user-plus me-2"></i>Enroll Single Student
+                                    </button>
+                                </form>
+                            </div>
+                            {% if enrollments %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Student ID</th>
+                                            <th>Name</th>
+                                            <th>Enrollment Type</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for enrollment in enrollments %}
+                                        <tr>
+                                            <td>{{ enrollment.student.student_id }}</td>
+                                            <td>{{ enrollment.student.name }}</td>
+                                            <td>
+                                                <span class="badge {% if enrollment.enrollment_type == 'Regular' %}bg-success{% else %}bg-warning{% endif %}">
+                                                    {{ enrollment.get_enrollment_type_display|default:"Regular" }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'courses:student_attainment' enrollment.student.student_id %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-chart-line me-1"></i>Attainment
+                                                </a>
+                                                <a href="{% url 'courses:edit_enrollment' enrollment.id %}" class="btn btn-sm btn-outline-secondary ms-1">
+                                                    <i class="fas fa-edit me-1"></i>Edit
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-outline-danger ms-1" data-bs-toggle="modal" data-bs-target="#deleteEnrollmentModal" data-enrollment-id="{{ enrollment.id }}" data-student-name="{{ enrollment.student.name }}">
+                                                    <i class="fas fa-trash-alt me-1"></i>Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>No students enrolled in this section yet.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Tab Pane (Placeholder) -->
+        <div class="tab-pane fade" id="attendance" role="tabpanel" aria-labelledby="attendance-tab">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <!-- Attendance content will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Marks Tab Pane -->
+        <div class="tab-pane fade" id="marks" role="tabpanel" aria-labelledby="marks-tab">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <!-- Marks content will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- CO-PO Tab Pane -->
+        <div class="tab-pane fade" id="copo" role="tabpanel" aria-labelledby="copo-tab">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <!-- CO-PO content will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ESCR Tab Pane -->
+        <div class="tab-pane fade" id="escr" role="tabpanel" aria-labelledby="escr-tab">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <!-- ESCR content will be populated here -->
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.nav-tabs .nav-link {
+    color: green !important; /* Set text color to green */
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: var(--card-border) var(--card-border) var(--card-bg);
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link {
+    color: green !important; /* Set text color to green in dark mode */
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-color); /* Active tab text color */
+    background-color: var(--card-bg);
+    border-color: var(--card-border) var(--card-border) var(--card-bg);
+}
+
+.nav-tabs {
+    border-bottom-color: var(--card-border);
+}
+
+.table th {
+    font-weight: 600;
+    color: var(--text-primary) !important;
+    background-color: var(--background-color) !important; /* Match background */
+    border-bottom: 1px solid var(--divider-color) !important;
+}
+
+[data-bs-theme="dark"] .table th {
+    color: var(--text-primary) !important;
+    background-color: var(--card-bg) !important; /* Match dark card background */
+    border-bottom: 1px solid var(--divider-color) !important;
+}
+
+.badge {
+    font-weight: 500;
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link.active {
+    color: var(--primary-color) !important; /* Ensure active tab text is visible in dark mode */
+    background-color: var(--card-bg) !important; /* Ensure active tab background is correct in dark mode */
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteEnrollmentModal" tabindex="-1" aria-labelledby="deleteEnrollmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteEnrollmentModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to remove <strong id="student-name-placeholder"></strong> from this section's enrollment?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="delete-enrollment-form" method="post" action="{% url 'courses:delete_enrollment' 0 %}"> {# Use a placeholder ID #}
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('student-identifier-input');
+        const suggestionsList = document.getElementById('student-suggestions');
+        let debounceTimer;
+
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fetchSuggestions, 300); // Adjust debounce delay as needed
+        });
+
+        searchInput.addEventListener('focus', function() {
+            // Show suggestions if input is not empty and there are suggestions
+             if (this.value.trim().length >= 2 && suggestionsList.children.length > 0) {
+                 suggestionsList.style.display = 'block';
+             }
+        });
+
+        // Hide suggestions when input loses focus, but add a small delay
+        // to allow clicking on suggestion items before the list hides.
+        searchInput.addEventListener('blur', function() {
+            setTimeout(() => {
+                 if (!suggestionsList.matches(':hover')) { // Check if mouse is not over the suggestions list
+                     suggestionsList.style.display = 'none';
+                 }
+            }, 100);
+        });
+
+        // Keep suggestions visible if hovering over the suggestions list
+         suggestionsList.addEventListener('mouseenter', function() {
+             suggestionsList.style.display = 'block';
+         });
+
+         suggestionsList.addEventListener('mouseleave', function() {
+             // Hide suggestions on mouse leave, but check if input has focus
+              if (!searchInput.matches(':focus')) {
+                suggestionsList.style.display = 'none';
+              }
+         });
+
+        function fetchSuggestions() {
+            const query = searchInput.value.trim();
+            if (query.length < 2) { // Only search if query is at least 2 characters
+                suggestionsList.innerHTML = ''; // Clear suggestions
+                suggestionsList.style.display = 'none'; // Hide suggestions
+                return;
+            }
+
+            const searchUrl = '{% url "courses:search_students_ajax" %}';
+
+            fetch(`${searchUrl}?term=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    suggestionsList.innerHTML = ''; // Clear previous suggestions
+                    if (data.length > 0) {
+                        data.forEach(student => {
+                            const suggestionItem = document.createElement('button'); // Use button for accessibility and styling
+                            suggestionItem.classList.add('list-group-item', 'list-group-item-action');
+                            suggestionItem.textContent = `${student.student_id} - ${student.name}`;
+                            suggestionItem.dataset.studentId = student.student_id; // Store ID for potential future use
+                            suggestionItem.dataset.studentName = student.name; // Store name
+
+                            // Add click listener to populate input and hide suggestions
+                            suggestionItem.addEventListener('click', function() {
+                                // Set input value to the student ID
+                                searchInput.value = this.dataset.studentId;
+                                suggestionsList.style.display = 'none'; // Hide suggestions
+
+                                // Submit the form after setting the correct student ID
+                                this.closest('form').submit();
+                            });
+
+                            suggestionsList.appendChild(suggestionItem);
+                        });
+                        suggestionsList.style.display = 'block'; // Show suggestions
+                    } else {
+                        suggestionsList.style.display = 'none'; // Hide if no suggestions
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching student suggestions:', error);
+                    suggestionsList.style.display = 'none'; // Hide on error
+                });
+        }
+
+         // Optional: Hide suggestions when clicking anywhere else on the document
+         document.addEventListener('click', function(event) {
+             if (!searchInput.contains(event.target) && !suggestionsList.contains(event.target)) {
+                 suggestionsList.style.display = 'none';
+             }
+         });
+
+        // JavaScript to handle the delete confirmation modal
+        const deleteEnrollmentModal = document.getElementById('deleteEnrollmentModal');
+        if (deleteEnrollmentModal) {
+            deleteEnrollmentModal.addEventListener('show.bs.modal', function (event) {
+                // Button that triggered the modal
+                const button = event.relatedTarget;
+                // Extract info from data-* attributes
+                const enrollmentId = button.getAttribute('data-enrollment-id');
+                const studentName = button.getAttribute('data-student-name');
+
+                // Update the modal's content.
+                const modalTitle = deleteEnrollmentModal.querySelector('.modal-title');
+                const modalBodyStrong = deleteEnrollmentModal.querySelector('#student-name-placeholder');
+                const deleteForm = deleteEnrollmentModal.querySelector('#delete-enrollment-form');
+
+                // Update the student name in the modal body
+                modalBodyStrong.textContent = studentName;
+
+                // Update the form action URL with the correct enrollment ID
+                // The URL pattern is /sections/<int:enrollment_id>/delete/ but we used 0 as placeholder
+                const formAction = deleteForm.getAttribute('action');
+                // Replace the placeholder 0 with the actual enrollmentId
+                deleteForm.setAttribute('action', formAction.replace('/0/', `/${enrollmentId}/`));
+            });
+
+            // Reset form action when the modal is hidden to prevent using the same ID if the same modal instance is reused
+            deleteEnrollmentModal.addEventListener('hide.bs.modal', function () {
+                const deleteForm = deleteEnrollmentModal.querySelector('#delete-enrollment-form');
+                // Reset the form action back to the placeholder URL
+                // This assumes the base URL without the ID is static or can be reconstructed
+                // A safer way might be to store the base URL in a data attribute or JS variable
+                // For now, let's assume we can reset it to the placeholder, which will be replaced on the next show.
+                deleteForm.setAttribute('action', deleteForm.getAttribute('action').replace(/\/\d+\//, '/0/'));
+            });
+        }
+    });
+</script>
 {% endblock %} 

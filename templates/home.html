@@ -12,7 +12,163 @@
 {% block content %}
 <div class="container py-5">
     {% if user.is_authenticated %}
-        {% if faculty %}
+        {% if is_superuser %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h4 class="card-title mb-3">Welcome, Superuser</h4>
+                            <p class="card-text">
+                                <strong>Access Level:</strong> Superuser<br>
+                                <strong>Status:</strong> Full System Access
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- Dashboard Access -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-tachometer-alt text-primary me-2"></i>
+                                Dashboard
+                            </h5>
+                            <p class="card-text">Access the system dashboard for comprehensive overview and management.</p>
+                            <a href="{% url 'accounts:dashboard' %}" class="btn btn-primary">
+                                <i class="fas fa-arrow-right me-2"></i>Go to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Course Management -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-book text-success me-2"></i>
+                                Course Management
+                            </h5>
+                            <p class="card-text">Create, update, and manage courses in the system.</p>
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'courses:course_list' %}" class="btn btn-success">
+                                    <i class="fas fa-list me-2"></i>View Courses
+                                </a>
+                                <a href="{% url 'courses:course_create' %}" class="btn btn-outline-success">
+                                    <i class="fas fa-plus me-2"></i>Create Course
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Management -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-chalkboard-teacher text-info me-2"></i>
+                                Section Management
+                            </h5>
+                            <p class="card-text">Create and manage course sections.</p>
+                            <div class="d-grid">
+                                <a href="{% url 'courses:select_course' %}" class="btn btn-outline-info">
+                                    <i class="fas fa-plus me-2"></i>Create Section
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Allowed Email Management -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-envelope text-warning me-2"></i>
+                                Email Management
+                            </h5>
+                            <p class="card-text">Manage allowed email addresses for faculty registration.</p>
+                            <a href="{% url 'programs:allowed_email_list' %}" class="btn btn-warning text-white">
+                                <i class="fas fa-cog me-2"></i>Manage Emails
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Management -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-user-cog text-secondary me-2"></i>
+                                Profile Management
+                            </h5>
+                            <p class="card-text">Update your profile information and settings.</p>
+                            <a href="{% url 'accounts:profile' %}" class="btn btn-secondary">
+                                <i class="fas fa-edit me-2"></i>Edit Profile
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- All Sections Card -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chalkboard-teacher me-2"></i>
+                                All Sections
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for section in sections %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ section.course.code }} - Section {{ section.name }}</h6>
+                                            <p class="card-text">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar me-2"></i>{{ section.semester }} {{ section.year }}<br>
+                                                    <i class="fas fa-user me-2"></i>Primary: {{ section.primary_faculty.name }}
+                                                    {% if section.secondary_faculty %}
+                                                    <br><i class="fas fa-user-friends me-2"></i>{{ section.secondary_faculty.name }}
+                                                    {% endif %}
+                                                </small>
+                                            </p>
+                                        </div>
+                                        <div class="card-footer bg-transparent">
+                                            <a href="{% url 'courses:section_detail' section.id %}" class="btn btn-info btn-sm">
+                                                <i class="fas fa-eye me-2"></i>View Details
+                                            </a>
+                                            <a href="{% url 'courses:bulk_enroll' section.id %}" class="btn btn-success btn-sm">
+                                                <i class="fas fa-user-plus me-2"></i>Enroll Students
+                                            </a>
+                                            <a href="{% url 'courses:assessment_template' section.id %}" class="btn btn-warning btn-sm">
+                                                <i class="fas fa-tasks me-2"></i>Assessment
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="col-12">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>No sections available.
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% elif faculty %}
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card shadow-sm">
@@ -80,36 +236,7 @@
                                 Section Management
                             </h5>
                             <p class="card-text">Create and manage course sections.</p>
-                            
-                            {% if sections %}
-                            <div class="mb-3">
-                                <h6 class="text-muted mb-2">Your Sections:</h6>
-                                <div class="list-group list-group-flush">
-                                    {% for section in sections|slice:":3" %}
-                                    <a href="{% url 'courses:section_detail' section.id %}" class="list-group-item list-group-item-action">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong>{{ section.course.code }}</strong> - Section {{ section.name }}
-                                                <br>
-                                                <small class="text-muted">{{ section.semester }} {{ section.year }}</small>
-                                            </div>
-                                            <i class="fas fa-chevron-right text-muted"></i>
-                                        </div>
-                                    </a>
-                                    {% endfor %}
-                                    {% if sections.count > 3 %}
-                                    <a href="{% url 'courses:all_sections' %}" class="list-group-item list-group-item-action text-center text-primary">
-                                        View all {{ sections.count }} sections
-                                    </a>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            <div class="d-grid gap-2">
-                                <a href="{% url 'courses:all_sections' %}" class="btn btn-info text-white">
-                                    <i class="fas fa-list me-2"></i>View All Sections
-                                </a>
+                            <div class="d-grid">
                                 <a href="{% url 'courses:select_course' %}" class="btn btn-outline-info">
                                     <i class="fas fa-plus me-2"></i>Create Section
                                 </a>
@@ -153,6 +280,60 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Faculty Sections Card -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chalkboard-teacher me-2"></i>
+                                My Sections
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for section in sections %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <a href="{% url 'courses:section_detail' section.id %}" class="text-decoration-none">
+                                        <div class="card h-100 section-card">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="card-title text-dark mb-2">{{ section.course.code }} - Section {{ section.name }}</h6>
+                                                        <p class="card-text mb-0">
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-calendar me-2"></i>{{ section.semester }} {{ section.year }}<br>
+                                                                <i class="fas fa-user me-2"></i>Primary: {{ section.primary_faculty.name }}
+                                                                {% if section.secondary_faculty %}
+                                                                <br><i class="fas fa-user-friends me-2"></i>Secondary: {{ section.secondary_faculty.name }}
+                                                                {% endif %}
+                                                            </small>
+                                                        </p>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <span class="badge bg-primary rounded-pill">
+                                                            <i class="fas fa-users me-1"></i>
+                                                            {{ section.enrollment_set.count }} Students
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                {% empty %}
+                                <div class="col-12">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>No sections available.
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         {% else %}
             <div class="alert alert-info">
                 <h4 class="alert-heading">Welcome!</h4>
@@ -192,6 +373,16 @@
     border-radius: 5px;
 }
 
+.section-card {
+    cursor: pointer;
+    border: 1px solid rgba(0,0,0,.125);
+}
+
+.section-card:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
 [data-bs-theme="dark"] .card {
     background-color: var(--bs-dark);
     border-color: var(--bs-border-color);
@@ -203,6 +394,10 @@
 
 [data-bs-theme="dark"] .card-text {
     color: var(--bs-gray-400);
+}
+
+[data-bs-theme="dark"] .section-card:hover {
+    border-color: var(--bs-primary);
 }
 </style>
 {% endblock %}

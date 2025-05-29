@@ -1,1 +1,178 @@
- 
+{% extends 'base.html' %}
+
+{% block title %}All Sections - OBE System{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>All Sections</h2>
+        <a href="{% url 'courses:select_course' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Create New Section
+        </a>
+    </div>
+
+    {% if messages %}
+    <div class="messages mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="semester" class="form-label">Semester</label>
+                    <select name="semester" id="semester" class="form-select">
+                        <option value="">All Semesters</option>
+                        <option value="Spring" {% if request.GET.semester == 'Spring' %}selected{% endif %}>Spring</option>
+                        <option value="Summer" {% if request.GET.semester == 'Summer' %}selected{% endif %}>Summer</option>
+                        <option value="Fall" {% if request.GET.semester == 'Fall' %}selected{% endif %}>Fall</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="year" class="form-label">Year</label>
+                    <select name="year" id="year" class="form-select">
+                        <option value="">All Years</option>
+                        {% for year in years %}
+                        <option value="{{ year }}" {% if request.GET.year == year|stringformat:"i" %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="department" class="form-label">Department</label>
+                    <select name="department" id="department" class="form-select">
+                        <option value="">All Departments</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if request.GET.department == dept.id|stringformat:"i" %}selected{% endif %}>{{ dept.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-2"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sections Grid -->
+    <div class="row">
+        {% for section in sections %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">{{ section.course.code }} - Section {{ section.name }}</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">{{ section.course.title }}</h6>
+                    <p class="card-text">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-2"></i>{{ section.semester }} {{ section.year }}<br>
+                            <i class="fas fa-user me-2"></i>Primary: {{ section.primary_faculty.name }}
+                            {% if section.secondary_faculty %}
+                            <br><i class="fas fa-user-friends me-2"></i>Secondary: {{ section.secondary_faculty.name }}
+                            {% endif %}
+                            <br><i class="fas fa-graduation-cap me-2"></i>{{ section.course.program.name }}
+                            <br><i class="fas fa-building me-2"></i>{{ section.course.program.department.name }}
+                        </small>
+                    </p>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{% url 'courses:section_detail' section.id %}" class="btn btn-info btn-sm">
+                            <i class="fas fa-eye me-2"></i>View Details
+                        </a>
+                        <a href="{% url 'courses:bulk_enroll' section.id %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-user-plus me-2"></i>Enroll Students
+                        </a>
+                        <a href="{% url 'courses:assessment_template' section.id %}" class="btn btn-warning btn-sm">
+                            <i class="fas fa-tasks me-2"></i>Assessment
+                        </a>
+                        <a href="{% url 'courses:enter_marks' section.id %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-edit me-2"></i>Enter Marks
+                        </a>
+                        <a href="{% url 'courses:obe_analytics' section.id %}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-chart-bar me-2"></i>OBE Analytics
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>No sections found matching your criteria.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if sections.has_other_pages %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if sections.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ sections.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% endif %}
+
+            {% for num in sections.paginator.page_range %}
+            {% if sections.number == num %}
+            <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+            {% else %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+
+            {% if sections.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ sections.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.card {
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.btn {
+    border-radius: 5px;
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: var(--bs-dark);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .card-title {
+    color: var(--bs-light);
+}
+
+[data-bs-theme="dark"] .card-text {
+    color: var(--bs-gray-400);
+}
+</style>
+{% endblock %}

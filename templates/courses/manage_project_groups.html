@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1>{{ title }}</h1>
+    <p>This page will be for managing project groups for {{ section.course.code }} Section {{ section.name }}.</p>
+    
+    {# Placeholder content for project group creation and management forms/tables #}
+    {# TODO: When implementing group management, ensure only students enrolled in this section can be added to groups. #}
+    <div class="card shadow-sm mt-4">
+        <div class="card-body">
+            <h4>Project Group Management Area</h4>
+            <p>Forms to create new groups, add/remove students, etc. will go here.</p>
+        </div>
+    </div>
+    
+    <div class="mt-3">
+        <a href="{% url 'courses:section_detail' section.id %}" class="btn btn-secondary">Back to Section Detail</a>
+    </div>
+</div>
+{% endblock %} 
