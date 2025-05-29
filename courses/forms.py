@@ -1,5 +1,7 @@
 from django import forms
 from .models import Course, Section, Faculty
+from django.utils import timezone
+from accounts.models import Faculty
 
 class CourseForm(forms.ModelForm):
     class Meta:
@@ -15,46 +17,66 @@ class CourseForm(forms.ModelForm):
         }
 
 class SectionForm(forms.ModelForm):
-    faculty1 = forms.ModelChoiceField(
-        queryset=Faculty.objects.all(),
-        label='Primary Faculty',
-        required=True,
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
-    faculty2 = forms.ModelChoiceField(
-        queryset=Faculty.objects.all(),
-        label='Secondary Faculty (Optional)',
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
-
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Get current year
+        current_year = timezone.now().year
+        
+        # Create year choices (3 years back to 3 years ahead)
+        year_choices = [(year, str(year)) for year in range(current_year - 3, current_year + 4)]
+        
+        # Update year field choices
+        self.fields['year'] = forms.ChoiceField(
+            choices=year_choices,
+            widget=forms.Select(attrs={'class': 'form-select'})
+        )
+        
+        # Update semester choices
+        self.fields['semester'] = forms.ChoiceField(
+            choices=Section.SEMESTER_CHOICES,
+            widget=forms.Select(attrs={'class': 'form-select'})
+        )
+        
+        # Get all faculties for the dropdowns
+        faculties = Faculty.objects.all().order_by('name')
+        self.fields['primary_faculty'].queryset = faculties
+        self.fields['secondary_faculty'].queryset = faculties
+        
+        # If editing, don't modify the primary faculty
+        if not self.instance.pk:
+            # Set the logged-in faculty as primary faculty
+            if self.user and hasattr(self.user, 'faculty'):
+                self.initial['primary_faculty'] = self.user.faculty
+    
     class Meta:
         model = Section
-        fields = ['section_number', 'semester', 'year']
+        fields = ['name', 'year', 'semester', 'primary_faculty', 'secondary_faculty']
         widgets = {
-            'section_number': forms.TextInput(attrs={'class': 'form-control'}),
-            'semester': forms.Select(attrs={'class': 'form-control'}, choices=[
-                ('Spring', 'Spring'),
-                ('Summer', 'Summer'),
-                ('Fall', 'Fall')
-            ]),
-            'year': forms.NumberInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter section name (e.g., A, B, C)'
+            }),
+            'primary_faculty': forms.Select(attrs={
+                'class': 'form-select',
+                'placeholder': 'Select primary faculty'
+            }),
+            'secondary_faculty': forms.Select(attrs={
+                'class': 'form-select',
+                'placeholder': 'Select secondary faculty (optional)'
+            }),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Get all faculties
-        self.fields['faculty1'].queryset = Faculty.objects.all()
-        self.fields['faculty2'].queryset = Faculty.objects.all()
-
+    
     def clean(self):
         cleaned_data = super().clean()
-        faculty1 = cleaned_data.get('faculty1')
-        faculty2 = cleaned_data.get('faculty2')
-
-        if faculty1 and faculty2 and faculty1 == faculty2:
-            raise forms.ValidationError("Primary and Secondary faculty cannot be the same person.")
-
+        primary_faculty = cleaned_data.get('primary_faculty')
+        secondary_faculty = cleaned_data.get('secondary_faculty')
+        
+        # Ensure primary and secondary faculty are different
+        if primary_faculty and secondary_faculty and primary_faculty == secondary_faculty:
+            raise forms.ValidationError("Primary and secondary faculty cannot be the same person.")
+        
         return cleaned_data
 
     def save(self, commit=True):
@@ -62,7 +84,7 @@ class SectionForm(forms.ModelForm):
         if commit:
             section.save()
             # Add faculties to the section
-            section.faculties.add(self.cleaned_data['faculty1'])
-            if self.cleaned_data['faculty2']:
-                section.faculties.add(self.cleaned_data['faculty2'])
+            section.faculties.add(self.cleaned_data['primary_faculty'])
+            if self.cleaned_data['secondary_faculty']:
+                section.faculties.add(self.cleaned_data['secondary_faculty'])
         return section 

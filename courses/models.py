@@ -28,31 +28,34 @@ class CLO(models.Model):
         return f"{self.course.code} - {self.code}"
 
 class Section(models.Model):
+    SEMESTER_CHOICES = [
+        ('Spring', 'Spring'),
+        ('Summer', 'Summer'),
+        ('Fall', 'Fall')
+    ]
+    
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
-    section_number = models.CharField(max_length=10)
-    semester = models.CharField(max_length=20)
+    name = models.CharField(max_length=10)  # e.g., A, B, C
     year = models.IntegerField()
-    faculties = models.ManyToManyField('accounts.Faculty', related_name='sections')
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
+    semester = models.CharField(max_length=10, choices=SEMESTER_CHOICES)
+    primary_faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='primary_sections')
+    secondary_faculty = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name='secondary_sections')
+    faculties = models.ManyToManyField(Faculty, related_name='sections')
+    
     class Meta:
-        unique_together = ('course', 'section_number', 'semester', 'year')
-        ordering = ['-year', 'semester', 'section_number']
-
+        unique_together = ['course', 'name', 'year', 'semester']
+        ordering = ['-year', 'semester', 'name']
+    
     def __str__(self):
-        return f"{self.course.code} - Section {self.section_number} ({self.semester} {self.year})"
-
-    def clean(self):
-        if self.faculties.count() > 2:
-            raise ValidationError('A section can have at most 2 faculties.')
-        if self.faculties.count() < 1:
-            raise ValidationError('A section must have at least one faculty.')
-
+        return f"{self.course.code} - {self.name} ({self.semester} {self.year})"
+    
     def save(self, *args, **kwargs):
-        self.full_clean()
+        # Ensure primary faculty is in the faculties M2M field
         super().save(*args, **kwargs)
+        if self.primary_faculty and self.primary_faculty not in self.faculties.all():
+            self.faculties.add(self.primary_faculty)
+        if self.secondary_faculty and self.secondary_faculty not in self.faculties.all():
+            self.faculties.add(self.secondary_faculty)
 
 class Student(models.Model):
     student_id = models.CharField(max_length=20, unique=True)

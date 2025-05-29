@@ -12,8 +12,10 @@ from accounts.models import Faculty
 from programs.models import Program, PLO, Department
 from .forms import CourseForm, SectionForm
 from django.core.exceptions import ValidationError
+from accounts.views import faculty_required, require_access_level
 
 @login_required
+@faculty_required
 def course_list(request):
     if request.user.is_superuser:
         courses = Course.objects.all()
@@ -24,6 +26,7 @@ def course_list(request):
     return render(request, 'courses/course_list.html', {'courses': courses})
 
 @login_required
+@faculty_required
 def all_sections(request):
     if request.user.is_superuser:
         sections = Section.objects.all()
@@ -37,6 +40,7 @@ def all_sections(request):
     })
 
 @login_required
+@faculty_required
 def section_list(request, course_code):
     course = get_object_or_404(Course, code=course_code)
     if request.user.is_superuser:
@@ -52,6 +56,7 @@ def section_list(request, course_code):
     })
 
 @login_required
+@faculty_required
 def section_detail(request, section_id):
     section = get_object_or_404(Section, id=section_id)
     
@@ -70,30 +75,24 @@ def section_detail(request, section_id):
     })
 
 @login_required
+@faculty_required
+@require_access_level('can_create_section')
 def create_section(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     
-    # Check if user is faculty or superuser
-    if not (request.user.is_superuser or hasattr(request.user, 'faculty')):
-        messages.error(request, 'Only faculty members and administrators can create sections.')
-        return redirect('courses:course_list')
-    
     if request.method == 'POST':
-        form = SectionForm(request.POST)
+        form = SectionForm(request.POST, user=request.user)
         if form.is_valid():
             section = form.save(commit=False)
             section.course = course
             try:
                 section.save()
-                # Add the current faculty as one of the section faculties if user is faculty
-                if hasattr(request.user, 'faculty'):
-                    section.faculties.add(request.user.faculty)
                 messages.success(request, 'Section created successfully.')
                 return redirect('courses:section_detail', section_id=section.id)
             except ValidationError as e:
                 messages.error(request, str(e))
     else:
-        form = SectionForm()
+        form = SectionForm(user=request.user)
     
     return render(request, 'courses/section_form.html', {
         'form': form,
@@ -259,44 +258,50 @@ def student_attainment_history(request, student_id):
     })
 
 @login_required
+@faculty_required
+@require_access_level('can_manage_courses')
 def course_create(request):
     if request.method == 'POST':
         form = CourseForm(request.POST)
         if form.is_valid():
             form.save()
+            messages.success(request, 'Course created successfully.')
             return redirect('courses:course_list')
     else:
         form = CourseForm()
     return render(request, 'courses/course_form.html', {'form': form})
 
 @login_required
+@faculty_required
+@require_access_level('can_manage_courses')
 def course_update(request, pk):
     course = get_object_or_404(Course, pk=pk)
     if request.method == 'POST':
         form = CourseForm(request.POST, instance=course)
         if form.is_valid():
             form.save()
+            messages.success(request, 'Course updated successfully.')
             return redirect('courses:course_list')
     else:
         form = CourseForm(instance=course)
     return render(request, 'courses/course_form.html', {'form': form})
 
 @login_required
+@faculty_required
+@require_access_level('can_manage_courses')
 def course_delete(request, pk):
     course = get_object_or_404(Course, pk=pk)
     if request.method == 'POST':
         course.delete()
+        messages.success(request, 'Course deleted successfully.')
         return redirect('courses:course_list')
     return render(request, 'courses/course_confirm_delete.html', {'course': course})
 
 @login_required
+@faculty_required
+@require_access_level('can_create_section')
 def select_course(request):
     """View for selecting a course to create a section"""
-    # Check if user is faculty or superuser
-    if not (request.user.is_superuser or hasattr(request.user, 'faculty')):
-        messages.error(request, 'Only faculty members and administrators can create sections.')
-        return redirect('home')
-    
     # Get all departments
     departments = Department.objects.all().order_by('name')
     

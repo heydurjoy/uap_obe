@@ -10,115 +10,199 @@
 {% block title %}Home - UAP OBE System{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h1 class="text-center mb-4">Welcome to UAP OBE System</h1>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        <!-- Courses Card -->
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h3 class="mb-0"><i class="fas fa-book me-2"></i>Courses</h3>
-                </div>
-                <div class="card-body">
-                    <p class="card-text">Manage your courses, create sections, and track student performance.</p>
-                    <div class="d-flex flex-column gap-2">
-                        <a href="{% url 'courses:course_list' %}" class="btn btn-primary">
-                            <i class="fas fa-list me-2"></i>View Courses
-                        </a>
-                        <a href="{% url 'courses:course_create' %}" class="btn btn-outline-primary">
-                            <i class="fas fa-plus me-2"></i>Add New Course
-                        </a>
+<div class="container py-5">
+    {% if user.is_authenticated %}
+        {% if faculty %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h4 class="card-title mb-3">Welcome, {{ faculty.name }}</h4>
+                            <p class="card-text">
+                                <strong>Department:</strong> {{ faculty.department.name }}<br>
+                                <strong>Designation:</strong> {{ faculty.designation }}<br>
+                                <strong>Access Level:</strong> {{ access_level_display }}
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Sections Card -->
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h3 class="mb-0"><i class="fas fa-chalkboard-teacher me-2"></i>Sections</h3>
+            <div class="row g-4">
+                <!-- Dashboard Access -->
+                {% if can_access_dashboard %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-tachometer-alt text-primary me-2"></i>
+                                Dashboard
+                            </h5>
+                            <p class="card-text">Access the system dashboard for comprehensive overview and management.</p>
+                            <a href="{% url 'accounts:dashboard' %}" class="btn btn-primary">
+                                <i class="fas fa-arrow-right me-2"></i>Go to Dashboard
+                            </a>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <p class="card-text">Manage course sections, assign faculties, and track section performance.</p>
-                    <div class="d-flex flex-column gap-2">
-                        <a href="{% url 'courses:all_sections' %}" class="btn btn-primary">
-                            <i class="fas fa-list me-2"></i>View Sections
-                        </a>
-                        <a href="{% url 'courses:select_course' %}" class="btn btn-outline-primary">
-                            <i class="fas fa-plus me-2"></i>Create Section
-                        </a>
+                {% endif %}
+
+                <!-- Course Management -->
+                {% if can_manage_courses %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-book text-success me-2"></i>
+                                Course Management
+                            </h5>
+                            <p class="card-text">Create, update, and manage courses in the system.</p>
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'courses:course_list' %}" class="btn btn-success">
+                                    <i class="fas fa-list me-2"></i>View Courses
+                                </a>
+                                <a href="{% url 'courses:course_create' %}" class="btn btn-outline-success">
+                                    <i class="fas fa-plus me-2"></i>Create Course
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Section Management -->
+                {% if can_create_section %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-chalkboard-teacher text-info me-2"></i>
+                                Section Management
+                            </h5>
+                            <p class="card-text">Create and manage course sections.</p>
+                            
+                            {% if sections %}
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">Your Sections:</h6>
+                                <div class="list-group list-group-flush">
+                                    {% for section in sections|slice:":3" %}
+                                    <a href="{% url 'courses:section_detail' section.id %}" class="list-group-item list-group-item-action">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>{{ section.course.code }}</strong> - Section {{ section.name }}
+                                                <br>
+                                                <small class="text-muted">{{ section.semester }} {{ section.year }}</small>
+                                            </div>
+                                            <i class="fas fa-chevron-right text-muted"></i>
+                                        </div>
+                                    </a>
+                                    {% endfor %}
+                                    {% if sections.count > 3 %}
+                                    <a href="{% url 'courses:all_sections' %}" class="list-group-item list-group-item-action text-center text-primary">
+                                        View all {{ sections.count }} sections
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'courses:all_sections' %}" class="btn btn-info text-white">
+                                    <i class="fas fa-list me-2"></i>View All Sections
+                                </a>
+                                <a href="{% url 'courses:select_course' %}" class="btn btn-outline-info">
+                                    <i class="fas fa-plus me-2"></i>Create Section
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Allowed Email Management -->
+                {% if can_manage_allowed_emails %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-envelope text-warning me-2"></i>
+                                Email Management
+                            </h5>
+                            <p class="card-text">Manage allowed email addresses for faculty registration.</p>
+                            <a href="{% url 'programs:allowed_email_list' %}" class="btn btn-warning text-white">
+                                <i class="fas fa-cog me-2"></i>Manage Emails
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Profile Management -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-user-cog text-secondary me-2"></i>
+                                Profile Management
+                            </h5>
+                            <p class="card-text">Update your profile information and settings.</p>
+                            <a href="{% url 'accounts:profile' %}" class="btn btn-secondary">
+                                <i class="fas fa-edit me-2"></i>Edit Profile
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Programs Card -->
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h3 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Programs</h3>
-                </div>
-                <div class="card-body">
-                    <p class="card-text">Manage academic programs, PLOs, and track program outcomes.</p>
-                    <div class="d-flex flex-column gap-2">
-                        <a href="{% url 'programs:program_list' %}" class="btn btn-primary">
-                            <i class="fas fa-list me-2"></i>View Programs
-                        </a>
-                        <a href="{% url 'programs:program_create' %}" class="btn btn-outline-primary">
-                            <i class="fas fa-plus me-2"></i>Add New Program
-                        </a>
-                    </div>
+        {% else %}
+            <div class="alert alert-info">
+                <h4 class="alert-heading">Welcome!</h4>
+                <p>You are logged in but don't have a faculty profile. Please contact the administrator for assistance.</p>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <h1 class="display-4 mb-4">Welcome to UAP OBE System</h1>
+                <p class="lead mb-4">Please log in to access the system features.</p>
+                <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                    <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-lg px-4 gap-3">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </a>
+                    <a href="{% url 'accounts:register' %}" class="btn btn-outline-primary btn-lg px-4">
+                        <i class="fas fa-user-plus me-2"></i>Register
+                    </a>
                 </div>
             </div>
         </div>
-
-        <!-- Analytics Card -->
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h3 class="mb-0"><i class="fas fa-chart-line me-2"></i>Analytics</h3>
-                </div>
-                <div class="card-body">
-                    <p class="card-text">View detailed analytics and reports for courses and programs.</p>
-                    <div class="d-flex flex-column gap-2">
-                        <a href="{% url 'programs:program_list' %}" class="btn btn-primary">
-                            <i class="fas fa-chart-bar me-2"></i>Program Analytics
-                        </a>
-                        <a href="{% url 'courses:course_list' %}" class="btn btn-outline-primary">
-                            <i class="fas fa-chart-pie me-2"></i>Course Analytics
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Settings Card -->
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h3 class="mb-0"><i class="fas fa-cog me-2"></i>Settings</h3>
-                </div>
-                <div class="card-body">
-                    <p class="card-text">Configure system settings and manage user accounts.</p>
-                    <div class="d-flex flex-column gap-2">
-                        <a href="{% url 'accounts:profile' %}" class="btn btn-primary">
-                            <i class="fas fa-user me-2"></i>Profile Settings
-                        </a>
-                        {% if user.is_superuser %}
-                        <a href="{% url 'admin:index' %}" class="btn btn-outline-primary">
-                            <i class="fas fa-shield-alt me-2"></i>Admin Panel
-                        </a>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.card {
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.btn {
+    border-radius: 5px;
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: var(--bs-dark);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .card-title {
+    color: var(--bs-light);
+}
+
+[data-bs-theme="dark"] .card-text {
+    color: var(--bs-gray-400);
+}
+</style>
 {% endblock %}

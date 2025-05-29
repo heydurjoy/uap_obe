@@ -15,9 +15,11 @@
                 {% endif %}
             </p>
         </div>
+        {% if can_create_section %}
         <a href="{% url 'courses:create_section' course.pk %}" class="btn btn-primary">
             <i class="fas fa-plus me-2"></i>Create New Section
         </a>
+        {% endif %}
     </div>
 
     <div class="row">
@@ -25,10 +27,13 @@
         <div class="col-md-6 col-lg-4 mb-4">
             <div class="card h-100">
                 <div class="card-body">
-                    <h5 class="card-title">Section {{ section.section_number }}</h5>
+                    <h5 class="card-title">Section {{ section.name }}</h5>
                     <p class="card-text">
                         <small class="text-muted">
-                            <i class="fas fa-user me-2"></i>{{ section.teacher_name|default:"No Teacher Assigned" }}
+                            <i class="fas fa-user me-2"></i>Primary: {{ section.primary_faculty.name }}
+                            {% if section.secondary_faculty %}
+                            <br><i class="fas fa-user-friends me-2"></i>Secondary: {{ section.secondary_faculty.name }}
+                            {% endif %}
                         </small>
                     </p>
                     <p class="card-text">

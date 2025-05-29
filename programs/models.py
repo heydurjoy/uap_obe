@@ -49,10 +49,10 @@ class PLO(models.Model):
 
 class AllowedEmail(models.Model):
     LEVEL_CHOICES = [
-        (1, '1. Highest Access'),
-        (2, '2. High Access '),
-        (3, '3. Mid Access'),
-        (4, '4. Faculty'),  # default
+        (1, '1. Highest Access Faculty'),
+        (2, '2. High Access Faculty '),
+        (3, '3. Mid Access Faculty'),
+        (4, '4. General Faculty'),  # default
     ]
 
     email = models.EmailField(unique=True)

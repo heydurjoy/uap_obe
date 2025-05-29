@@ -4,9 +4,14 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2>{{ section.course.code }} - Section {{ section.section_number }}</h2>
+            <h2>{{ section.course.code }} - Section {{ section.name }}</h2>
             <p class="text-muted">
-                <i class="fas fa-user me-2"></i>{{ section.teacher_name|default:"No Teacher Assigned" }}
+                <i class="fas fa-user me-2"></i>Primary: {{ section.primary_faculty.name }}
+                {% if section.secondary_faculty %}
+                <span class="ms-3">
+                    <i class="fas fa-user-friends me-2"></i>Secondary: {{ section.secondary_faculty.name }}
+                </span>
+                {% endif %}
                 <span class="ms-3">
                     <i class="fas fa-calendar me-2"></i>{{ section.semester }} {{ section.year }}
                 </span>

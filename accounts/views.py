@@ -2,26 +2,39 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.contrib.auth.models import User
 from .forms import UserRegistrationForm, FacultyProfileForm, UserProfileForm, CustomAuthenticationForm
 from .models import Faculty
 from programs.models import AllowedEmail
+from functools import wraps
+
+def faculty_required(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if not hasattr(request.user, 'faculty'):
+            messages.error(request, 'You must be a faculty member to access this page.')
+            return redirect('home')
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
+def require_access_level(level_func):
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            faculty = get_object_or_404(Faculty, user=request.user)
+            if not getattr(faculty, level_func)():
+                messages.error(request, 'You do not have permission to access this page.')
+                return redirect('home')
+            return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
 
 def register(request):
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            allowed_email = AllowedEmail.objects.get(email=form.cleaned_data.get('email'))
-            faculty = Faculty.objects.create(
-                user=user,
-                allowed_email=allowed_email,
-                name=f"{user.first_name} {user.last_name}",
-                short_name=user.username[:4].upper(),
-                department=allowed_email.department,
-                designation='Lecturer',  # Default designation
-                phone_number=''  # Empty phone number
-            )
+            user = form.save()  # This will create both user and faculty profile
             login(request, user)
             messages.success(request, 'Registration successful! Please complete your profile.')
             return redirect('accounts:profile')
@@ -38,19 +51,20 @@ def login_view(request):
             user = authenticate(username=username, password=password)
             if user is not None:
                 login(request, user)
-                messages.success(request, f'Welcome back, {user.get_full_name()}!')
-                return redirect('accounts:dashboard')
+                messages.success(request, f'Welcome back, {user.username}!')
+                return redirect('home')
     else:
         form = CustomAuthenticationForm()
     return render(request, 'accounts/login.html', {'form': form})
 
-@login_required
 def logout_view(request):
     logout(request)
-    messages.info(request, 'You have been logged out successfully.')
-    return redirect('accounts:login')
+    messages.success(request, 'You have been logged out successfully.')
+    return redirect('home')
 
 @login_required
+@faculty_required
+@require_access_level('can_access_dashboard')
 def dashboard(request):
     faculty = get_object_or_404(Faculty, user=request.user)
     context = {
@@ -61,6 +75,7 @@ def dashboard(request):
     return render(request, 'accounts/dashboard.html', context)
 
 @login_required
+@faculty_required
 def profile(request):
     faculty = get_object_or_404(Faculty, user=request.user)
     if request.method == 'POST':

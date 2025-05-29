@@ -3,96 +3,82 @@
 {% block title %}{{ title }} - UAP OBE System{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h1>{{ title }}</h1>
-            <p class="text-muted">
-                <i class="fas fa-book me-2"></i>{{ course.code }} - {{ course.title }}
-            </p>
-        </div>
-    </div>
-
-    <div class="row">
+<div class="container py-5">
+    <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{{ title }}</h4>
+                </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" novalidate>
                         {% csrf_token %}
                         
+                        <!-- Section Name -->
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Section Name</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.name.errors }}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Enter a single letter or number (e.g., A, B, 1, 2)</div>
+                        </div>
+
+                        <!-- Year and Semester -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.year.id_for_label }}" class="form-label">Year</label>
+                                {{ form.year }}
+                                {% if form.year.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.year.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.semester.id_for_label }}" class="form-label">Semester</label>
+                                {{ form.semester }}
+                                {% if form.semester.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.semester.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Faculty Selection -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.primary_faculty.id_for_label }}" class="form-label">Primary Faculty</label>
+                                {{ form.primary_faculty }}
+                                {% if form.primary_faculty.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.primary_faculty.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.secondary_faculty.id_for_label }}" class="form-label">Secondary Faculty (Optional)</label>
+                                {{ form.secondary_faculty }}
+                                {% if form.secondary_faculty.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.secondary_faculty.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
                         {% if form.non_field_errors %}
                         <div class="alert alert-danger">
-                            {% for error in form.non_field_errors %}
-                                {{ error }}
-                            {% endfor %}
+                            {{ form.non_field_errors }}
                         </div>
                         {% endif %}
 
-                        <div class="mb-3">
-                            <label for="{{ form.section_number.id_for_label }}" class="form-label">Section Number</label>
-                            {{ form.section_number }}
-                            {% if form.section_number.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.section_number.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.semester.id_for_label }}" class="form-label">Semester</label>
-                            {{ form.semester }}
-                            {% if form.semester.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.semester.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.year.id_for_label }}" class="form-label">Year</label>
-                            {{ form.year }}
-                            {% if form.year.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.year.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.faculty1.id_for_label }}" class="form-label">Primary Faculty</label>
-                            {{ form.faculty1 }}
-                            {% if form.faculty1.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.faculty1.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                            <div class="form-text">Select the primary faculty for this section.</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.faculty2.id_for_label }}" class="form-label">Secondary Faculty (Optional)</label>
-                            {{ form.faculty2 }}
-                            {% if form.faculty2.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.faculty2.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                            <div class="form-text">Optionally select a secondary faculty for this section.</div>
-                        </div>
-
-                        <div class="d-flex gap-2">
+                        <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Create Section
+                                <i class="fas fa-save me-2"></i>Save Section
                             </button>
                             <a href="{% url 'courses:section_list' course.code %}" class="btn btn-outline-secondary">
                                 <i class="fas fa-times me-2"></i>Cancel
@@ -102,53 +88,55 @@
                 </div>
             </div>
         </div>
-
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Course Information</h5>
-                </div>
-                <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-4">Code</dt>
-                        <dd class="col-sm-8">{{ course.code }}</dd>
-
-                        <dt class="col-sm-4">Title</dt>
-                        <dd class="col-sm-8">{{ course.title }}</dd>
-
-                        <dt class="col-sm-4">Program</dt>
-                        <dd class="col-sm-8">{{ course.program.name }}</dd>
-
-                        <dt class="col-sm-4">Credits</dt>
-                        <dd class="col-sm-8">{{ course.credits }}</dd>
-
-                        <dt class="col-sm-4">Type</dt>
-                        <dd class="col-sm-8">
-                            {% if course.is_lab %}
-                            <span class="badge bg-info">Lab Course</span>
-                            {% else %}
-                            <span class="badge bg-primary">Theory Course</span>
-                            {% endif %}
-                        </dd>
-                    </dl>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-label {
+    font-weight: 500;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.invalid-feedback {
+    font-size: 0.875rem;
+}
+
+.form-text {
+    font-size: 0.75rem;
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: var(--bs-dark);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .text-muted {
+    color: var(--bs-gray-400) !important;
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize select2 for faculty dropdowns
-    $('#{{ form.faculty1.id_for_label }}').select2({
+    $('#{{ form.primary_faculty.id_for_label }}').select2({
         theme: 'bootstrap-5',
         placeholder: 'Select primary faculty...',
         allowClear: false
     });
     
-    $('#{{ form.faculty2.id_for_label }}').select2({
+    $('#{{ form.secondary_faculty.id_for_label }}').select2({
         theme: 'bootstrap-5',
         placeholder: 'Select secondary faculty (optional)...',
         allowClear: true
