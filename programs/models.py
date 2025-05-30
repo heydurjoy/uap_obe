@@ -40,11 +40,13 @@ class Program(models.Model):
 
 
 class PLO(models.Model):
-    code = models.CharField(max_length=200, unique=True)  # e.g., "PLO1", "PLO2"
+    numberic_sl = models.PositiveIntegerField(unique=True, default=1)  # e.g., "PLO1", "PLO2"
+    alphabatic_sl = models.CharField(unique=True, default='a', max_length=1)  # e.g., "PLO1", "PLO2"
     description = models.TextField(null=True, blank=True)
+    # program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='plos')
 
     def __str__(self):
-        return self.code
+        return f"{self.numberic_sl}. {self.alphabatic_sl} - {self.description}"
 
 
 class AllowedEmail(models.Model):

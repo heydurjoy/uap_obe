@@ -6,11 +6,12 @@ from django.db.models import Sum, Avg, F, Q
 from django.core.exceptions import PermissionDenied
 from .models import (
     Course, CLO, Section, Student, Enrollment,
-    AssessmentTemplate, AssessmentComponent, AssessmentMark, Attainment
+    AssessmentTemplate, AssessmentComponent, AssessmentMark, Attainment,
+    ProjectGroup
 )
 from accounts.models import Faculty
 from programs.models import Program, PLO, Department
-from .forms import CourseForm, SectionForm, BulkEnrollForm, EnrollmentForm
+from .forms import CourseForm, SectionForm, BulkEnrollForm, EnrollmentForm, CLOForm
 from django.core.exceptions import ValidationError
 from accounts.views import faculty_required, require_access_level
 from django.db import transaction
@@ -805,13 +806,109 @@ def manage_project_groups_view(request, section_id):
         messages.error(request, 'You do not have permission to manage project groups for this section.')
         return redirect('courses:section_detail', section_id=section.id)
 
-    # TODO: Implement logic to display existing project groups and allow creation/editing.
-    # TODO: Ensure only students enrolled in this section can be added to project groups.
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'create_group':
+            project_name = request.POST.get('project_name')
+            group_number = request.POST.get('group_number')
+            
+            try:
+                # Check if group number already exists
+                if ProjectGroup.objects.filter(section=section, group_sl=group_number).exists():
+                    messages.error(request, f'Group number {group_number} already exists in this section.')
+                else:
+                    ProjectGroup.objects.create(
+                        section=section,
+                        group_sl=group_number,
+                        project_name=project_name
+                    )
+                    messages.success(request, f'Project group {group_number} created successfully.')
+            except Exception as e:
+                messages.error(request, f'Error creating project group: {str(e)}')
 
-    # For now, just render a placeholder template
+        elif action == 'delete_group':
+            group_id = request.POST.get('group_id')
+            try:
+                group = ProjectGroup.objects.get(id=group_id, section=section)
+                group.delete()
+                messages.success(request, 'Project group deleted successfully.')
+            except ProjectGroup.DoesNotExist:
+                messages.error(request, 'Project group not found.')
+            except Exception as e:
+                messages.error(request, f'Error deleting project group: {str(e)}')
+
+        elif action == 'add_student':
+            group_id = request.POST.get('group_id')
+            student_id = request.POST.get('student_id')
+            
+            try:
+                group = ProjectGroup.objects.get(id=group_id, section=section)
+                student = Student.objects.get(student_id=student_id)
+                
+                # Check if student is enrolled in the section
+                if not section.enrollment_set.filter(student=student).exists():
+                    messages.error(request, 'Student is not enrolled in this section.')
+                else:
+                    # Check if student is already in a group
+                    if ProjectGroup.objects.filter(section=section, students=student).exists():
+                        messages.error(request, 'Student is already assigned to a group in this section.')
+                    else:
+                        group.students.add(student)
+                        messages.success(request, f'Student {student.name} added to group {group.group_sl}.')
+            except ProjectGroup.DoesNotExist:
+                messages.error(request, 'Project group not found.')
+            except Student.DoesNotExist:
+                messages.error(request, 'Student not found.')
+            except Exception as e:
+                messages.error(request, f'Error adding student to group: {str(e)}')
+
+        elif action == 'remove_student':
+            group_id = request.POST.get('group_id')
+            student_id = request.POST.get('student_id')
+            
+            try:
+                group = ProjectGroup.objects.get(id=group_id, section=section)
+                student = Student.objects.get(student_id=student_id)
+                group.students.remove(student)
+                messages.success(request, f'Student {student.name} removed from group {group.group_sl}.')
+            except ProjectGroup.DoesNotExist:
+                messages.error(request, 'Project group not found.')
+            except Student.DoesNotExist:
+                messages.error(request, 'Student not found.')
+            except Exception as e:
+                messages.error(request, f'Error removing student from group: {str(e)}')
+
+    # Get all project groups for this section
+    project_groups = ProjectGroup.objects.filter(section=section).prefetch_related('students')
+    
+    # Get all students enrolled in this section who are not in any group
+    enrolled_students = Student.objects.filter(
+        enrollment__section=section
+    ).exclude(
+        project_groups__section=section
+    ).distinct()
+
+    # Get all students enrolled in this section
+    all_enrolled_students = Student.objects.filter(
+        enrollment__section=section
+    ).distinct()
+
+    # Create a list of students with their group information
+    students_with_groups = []
+    for student in all_enrolled_students:
+        group = ProjectGroup.objects.filter(section=section, students=student).first()
+        students_with_groups.append({
+            'student': student,
+            'group': group
+        })
+
     context = {
         'section': section,
-        'title': f'Manage Project Groups - {section.course.code} Section {section.name}'
+        'title': f'Manage Project Groups - {section.course.code} Section {section.name}',
+        'project_groups': project_groups,
+        'available_students': enrolled_students,  # keep for now, but not used in modal
+        'students_with_groups': students_with_groups,
     }
     return render(request, 'courses/manage_project_groups.html', context)
 
@@ -840,3 +937,95 @@ def edit_section_view(request, section_id):
         'title': f'Edit Section - {section.course.code} Section {section.name}'
     }
     return render(request, 'courses/edit_section.html', context)
+
+@login_required
+@faculty_required
+def manage_clos_view(request, section_id):
+    section = get_object_or_404(Section, id=section_id)
+    
+    # Check if user has permission
+    if not request.user.is_superuser and request.user.faculty not in [section.primary_faculty, section.secondary_faculty]:
+        messages.error(request, 'You do not have permission to manage CLOs for this section.')
+        return redirect('courses:section_detail', section_id=section.id)
+
+    clos = CLO.objects.filter(course=section.course).order_by('sl')
+    
+    if request.method == 'POST':
+        form = CLOForm(request.POST, course=section.course)
+        if form.is_valid():
+            try:
+                clo = form.save(commit=False)
+                clo.course = section.course
+                clo.save()
+                messages.success(request, f'CLO {clo.get_clo_code()} created successfully.')
+                return redirect('courses:manage_clos', section_id=section.id)
+            except IntegrityError:
+                messages.error(request, f'CLO with serial number {form.cleaned_data.get("sl")} already exists for this course.')
+        else:
+            # If form is invalid, show the first error message
+            for field, errors in form.errors.items():
+                if field == 'sl':
+                    messages.error(request, errors[0])
+                    break
+    else:
+        form = CLOForm(course=section.course)
+
+    context = {
+        'section': section,
+        'clos': clos,
+        'form': form,
+        'title': f'Manage CLOs - {section.course.code} Section {section.name}'
+    }
+    return render(request, 'courses/manage_clos.html', context)
+
+@login_required
+@faculty_required
+def edit_clo_view(request, section_id, clo_id):
+    section = get_object_or_404(Section, id=section_id)
+    clo = get_object_or_404(CLO, id=clo_id, course=section.course)
+    
+    # Check if user has permission
+    if not request.user.is_superuser and request.user.faculty not in [section.primary_faculty, section.secondary_faculty]:
+        messages.error(request, 'You do not have permission to edit CLOs for this section.')
+        return redirect('courses:section_detail', section_id=section.id)
+
+    if request.method == 'POST':
+        form = CLOForm(request.POST, instance=clo, course=section.course)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'CLO {clo.get_clo_code()} updated successfully.')
+            return redirect('courses:manage_clos', section_id=section.id)
+    else:
+        form = CLOForm(instance=clo, course=section.course)
+
+    context = {
+        'section': section,
+        'clo': clo,
+        'form': form,
+        'title': f'Edit CLO - {section.course.code} Section {section.name}'
+    }
+    return render(request, 'courses/edit_clo.html', context)
+
+@login_required
+@faculty_required
+def delete_clo_view(request, section_id, clo_id):
+    section = get_object_or_404(Section, id=section_id)
+    clo = get_object_or_404(CLO, id=clo_id, course=section.course)
+    
+    # Check if user has permission
+    if not request.user.is_superuser and request.user.faculty not in [section.primary_faculty, section.secondary_faculty]:
+        messages.error(request, 'You do not have permission to delete CLOs for this section.')
+        return redirect('courses:section_detail', section_id=section.id)
+
+    if request.method == 'POST':
+        clo_code = clo.get_clo_code()
+        clo.delete()
+        messages.success(request, f'CLO {clo_code} deleted successfully.')
+        return redirect('courses:manage_clos', section_id=section.id)
+
+    context = {
+        'section': section,
+        'clo': clo,
+        'title': f'Delete CLO - {section.course.code} Section {section.name}'
+    }
+    return render(request, 'courses/delete_clo.html', context)

@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 from programs.models import AllowedEmail, Department
+from django.utils.translation import gettext_lazy as _
 
 
 # Create your models here.
@@ -66,3 +67,29 @@ class Faculty(models.Model):
         if self.user.is_superuser:
             return "Superuser"
         return dict(AllowedEmail.LEVEL_CHOICES).get(self.access_level, 'Unknown')
+
+
+from django.db import models
+from django.core.exceptions import ValidationError
+
+class SingletonModel(models.Model):
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        if not self.pk and self.__class__.objects.exists():
+            raise ValidationError(f"Only one instance of {self.__class__.__name__} is allowed.")
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+class Holiday(models.Model):
+    name = models.CharField(max_length=255)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.start_date} - {self.end_date})"

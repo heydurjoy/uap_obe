@@ -16,16 +16,21 @@ class Course(models.Model):
         return f"{self.code} - {self.title}"
 
 class CLO(models.Model):
-    code = models.CharField(max_length=20)  # e.g., "CLO1", "CLO2"
-    description = models.TextField()
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='clos')
-    plos = models.ManyToManyField(PLO, related_name='clos')
-    
+    sl = models.PositiveIntegerField(verbose_name="Serial Number")
+    plo = models.ForeignKey(PLO, on_delete=models.SET_NULL, null=True, related_name='clos')
+    description = models.CharField(max_length=500)
+
     class Meta:
-        unique_together = ['code', 'course']
-    
+        unique_together = ['course', 'sl']
+        ordering = ['sl']
+
     def __str__(self):
-        return f"{self.course.code} - {self.code}"
+        plo_str = f" (Mapped to {self.plo})" if self.plo else ""
+        return f"{self.course.code} CLO {self.sl}{plo_str}"
+
+    def get_clo_code(self):
+        return f"{self.course.code}-CLO{self.sl}"
 
 class Section(models.Model):
     SEMESTER_CHOICES = [
@@ -151,6 +156,7 @@ class ProjectGroup(models.Model):
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='project_groups')
     group_sl = models.IntegerField() # Group Serial Number
     project_name = models.CharField(max_length=255, blank=True, null=True)
+    students = models.ManyToManyField(Student, related_name='project_groups')
 
     class Meta:
         unique_together = ['section', 'group_sl']

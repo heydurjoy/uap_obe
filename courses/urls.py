@@ -39,6 +39,11 @@ urlpatterns = [
     # Section editing URL
     path('sections/<int:section_id>/edit/', views.edit_section_view, name='edit_section'),
     
+    # CLO management URLs
+    path('sections/<int:section_id>/clos/', views.manage_clos_view, name='manage_clos'),
+    path('sections/<int:section_id>/clos/<int:clo_id>/edit/', views.edit_clo_view, name='edit_clo'),
+    path('sections/<int:section_id>/clos/<int:clo_id>/delete/', views.delete_clo_view, name='delete_clo'),
+    
     # Student attainment URLs
     path('students/<str:student_id>/attainment/', views.student_attainment_history, name='student_attainment'),
 ] 

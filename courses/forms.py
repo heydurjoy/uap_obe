@@ -1,5 +1,6 @@
 from django import forms
-from .models import Course, Section, Faculty, Student, Enrollment
+from .models import Course, Section, Faculty, Student, Enrollment, CLO
+from programs.models import PLO
 from django.utils import timezone
 from accounts.models import Faculty
 
@@ -111,4 +112,35 @@ class EnrollmentForm(forms.ModelForm):
         fields = ['enrollment_type']
         widgets = {
             'enrollment_type': forms.Select(attrs={'class': 'form-select'})
-        } 
+        }
+
+class CLOForm(forms.ModelForm):
+    class Meta:
+        model = CLO
+        fields = ['sl', 'plo', 'description']
+        widgets = {
+            'sl': forms.NumberInput(attrs={'class': 'form-control'}),
+            'plo': forms.Select(attrs={'class': 'form-select'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.course = kwargs.pop('course', None)
+        super().__init__(*args, **kwargs)
+        # Add Bootstrap classes to all fields
+        for field_name, field in self.fields.items():
+            if not isinstance(field.widget, (forms.CheckboxInput, forms.CheckboxSelectMultiple)):
+                field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' form-control'
+            if isinstance(field.widget, forms.Select):
+                field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' form-select'
+
+    def clean_sl(self):
+        sl = self.cleaned_data.get('sl')
+        if self.course:
+            # Check if a CLO with this serial number already exists for this course
+            existing_clo = CLO.objects.filter(course=self.course, sl=sl)
+            if self.instance.pk:  # If editing existing CLO
+                existing_clo = existing_clo.exclude(pk=self.instance.pk)
+            if existing_clo.exists():
+                raise forms.ValidationError(f'CLO with serial number {sl} already exists for this course.')
+        return sl 
