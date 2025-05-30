@@ -7,7 +7,7 @@ from django.core.exceptions import PermissionDenied
 from .models import (
     Course, CLO, Section, Student, Enrollment,
     AssessmentTemplate, AssessmentComponent, AssessmentMark, Attainment,
-    ProjectGroup
+    ProjectGroup, Session
 )
 from accounts.models import Faculty
 from programs.models import Program, PLO, Department
@@ -17,6 +17,8 @@ from accounts.views import faculty_required, require_access_level
 from django.db import transaction
 from django.db import IntegrityError
 from django import forms
+from datetime import datetime, timedelta
+import json
 
 @login_required
 @faculty_required
@@ -76,7 +78,8 @@ def section_detail(request, section_id):
         'section': section,
         'template': template,
         'enrollments': enrollments,
-        'title': f'{section.course.code} - Section {section.name}'
+        'title': f'{section.course.code} - Section {section.name}',
+        'sessions': section.sessions.all()
     }
     
     return render(request, 'courses/section_detail.html', context)
@@ -1029,3 +1032,112 @@ def delete_clo_view(request, section_id, clo_id):
         'title': f'Delete CLO - {section.course.code} Section {section.name}'
     }
     return render(request, 'courses/delete_clo.html', context)
+
+@login_required
+@faculty_required
+def add_session_dates_view(request, section_id):
+    section = get_object_or_404(Section, id=section_id)
+    
+    # Check if user is a faculty of this section
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        messages.error(request, 'You do not have permission to add session dates for this section.')
+        return redirect('courses:section_detail', section_id=section.id)
+    
+    # Check if sessions already exist
+    existing_sessions = Session.objects.filter(section=section).exists()
+    if existing_sessions:
+        messages.error(request, 'Session dates have already been created for this section. Please contact the administrator to update them.')
+        return redirect('courses:section_detail', section_id=section.id)
+    
+    if request.method == 'POST':
+        first_date = request.POST.get('first_date')
+        second_date = request.POST.get('second_date')
+        
+        if first_date and second_date:
+            # Convert string dates to datetime objects
+            first_date = datetime.strptime(first_date, '%Y-%m-%d').date()
+            second_date = datetime.strptime(second_date, '%Y-%m-%d').date()
+            
+            # Calculate the interval between the two dates
+            interval = (second_date - first_date).days
+            
+            # Determine the number of sessions based on the course type
+            num_sessions = 14 if section.course.is_lab else 28
+            
+            try:
+                with transaction.atomic():
+                    # Create the sessions
+                    for i in range(num_sessions):
+                        # Calculate the date by adding weeks (7 days) multiplied by the week number
+                        # For example, if first date is Monday and second is Wednesday,
+                        # next dates will be Monday+7, Wednesday+7, Monday+14, Wednesday+14, etc.
+                        week_number = i // 2  # Integer division to get week number
+                        is_second_date = i % 2  # Check if it's the second date of the week
+                        
+                        if is_second_date:
+                            # For second date of the week (e.g., Wednesday)
+                            session_date = first_date + timedelta(days=interval + (week_number * 7))
+                        else:
+                            # For first date of the week (e.g., Monday)
+                            session_date = first_date + timedelta(days=week_number * 7)
+                            
+                        Session.objects.create(section=section, session_number=i + 1, date=session_date)
+                
+                messages.success(request, f'Successfully created {num_sessions} sessions.')
+            except Exception as e:
+                messages.error(request, f'Error creating sessions: {str(e)}')
+        else:
+            messages.error(request, 'Please provide both first and second session dates.')
+    
+    return redirect('courses:section_detail', section_id=section.id)
+
+@login_required
+@faculty_required
+def delete_all_sessions_view(request, section_id):
+    section = get_object_or_404(Section, id=section_id)
+    
+    # Check if user is a faculty of this section
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        messages.error(request, 'You do not have permission to delete sessions for this section.')
+        return redirect('courses:section_detail', section_id=section.id)
+    
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Delete all sessions for this section
+                Session.objects.filter(section=section).delete()
+            messages.success(request, 'All sessions have been deleted successfully.')
+        except Exception as e:
+            messages.error(request, f'Error deleting sessions: {str(e)}')
+    
+    return redirect('courses:section_detail', section_id=section.id)
+
+@login_required
+@faculty_required
+def update_session_date_view(request, session_id):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'})
+    
+    try:
+        session = get_object_or_404(Session, id=session_id)
+        section = session.section
+        
+        # Check if user is a faculty of this section
+        if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+            return JsonResponse({'success': False, 'message': 'You do not have permission to update this session.'})
+        
+        # Parse the JSON data
+        data = json.loads(request.body)
+        new_date = data.get('date')
+        
+        if not new_date:
+            return JsonResponse({'success': False, 'message': 'No date provided'})
+        
+        # Update the session date
+        session.date = datetime.strptime(new_date, '%Y-%m-%d').date()
+        session.save()
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})

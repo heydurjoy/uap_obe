@@ -174,3 +174,15 @@ class ProjectGroupEnrollment(models.Model):
 
     def __str__(self):
         return f'{self.student.name} in {self.project_group}'
+
+# New model for attendance sessions
+class Session(models.Model):
+    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='sessions')
+    session_number = models.IntegerField()
+    date = models.DateField()
+
+    class Meta:
+        ordering = ['session_number']
+
+    def __str__(self):
+        return f"{self.section.course.code} - Session {self.session_number} ({self.date})"

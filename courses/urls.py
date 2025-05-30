@@ -46,4 +46,11 @@ urlpatterns = [
     
     # Student attainment URLs
     path('students/<str:student_id>/attainment/', views.student_attainment_history, name='student_attainment'),
+    
+    # Add this line to the urlpatterns list
+    path('sections/<int:section_id>/add-session-dates/', views.add_session_dates_view, name='add_session_dates'),
+    
+    # New URL pattern for deleting all sessions
+    path('sections/<int:section_id>/delete-all-sessions/', views.delete_all_sessions_view, name='delete_all_sessions'),
+    path('sessions/<int:session_id>/update-date/', views.update_session_date_view, name='update_session_date'),
 ] 
