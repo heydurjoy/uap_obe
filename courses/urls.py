@@ -54,4 +54,8 @@ urlpatterns = [
     path('sections/<int:section_id>/delete-all-sessions/', views.delete_all_sessions_view, name='delete_all_sessions'),
     path('sessions/<int:session_id>/update-date/', views.update_session_date_view, name='update_session_date'),
     path('sections/<int:section_id>/update-total-classes/', views.update_section_total_classes_view, name='update_section_total_classes'),
+    
+    # Attendance URLs
+    path('sections/<int:section_id>/attendance/', views.get_attendance, name='get_attendance'),
+    path('sections/<int:section_id>/attendance/save/', views.save_attendance, name='save_attendance'),
 ] 

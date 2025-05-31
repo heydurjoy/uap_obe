@@ -188,3 +188,17 @@ class Session(models.Model):
 
     def __str__(self):
         return f"{self.section.course.code} - Session {self.session_number} ({self.date})"
+
+class Attendance(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    session = models.ForeignKey(Session, on_delete=models.CASCADE)
+    is_present = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['student', 'session']
+        ordering = ['session__session_number']
+
+    def __str__(self):
+        return f"{self.student.name} - Session {self.session.session_number} ({'Present' if self.is_present else 'Absent'})"

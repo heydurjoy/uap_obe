@@ -7,7 +7,7 @@ from django.core.exceptions import PermissionDenied
 from .models import (
     Course, CLO, Section, Student, Enrollment,
     AssessmentTemplate, AssessmentComponent, AssessmentMark, Attainment,
-    ProjectGroup, Session
+    ProjectGroup, Session, Attendance
 )
 from accounts.models import Faculty, Holiday
 from programs.models import Program, PLO, Department
@@ -19,6 +19,7 @@ from django.db import IntegrityError
 from django import forms
 from datetime import datetime, timedelta
 import json
+from django.views.decorators.http import require_http_methods
 
 @login_required
 @faculty_required
@@ -1035,9 +1036,6 @@ def delete_clo_view(request, section_id, clo_id):
 
 @login_required
 @faculty_required
-
-
-
 def add_session_dates_view(request, section_id):
     section = get_object_or_404(Section, id=section_id)
 
@@ -1206,3 +1204,59 @@ def update_section_total_classes_view(request, section_id):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@faculty_required
+@require_http_methods(["GET"])
+def get_attendance(request, section_id):
+    """Get attendance data for a section."""
+    section = get_object_or_404(Section, id=section_id)
+    
+    # Check if user is a faculty of this section or superuser
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    # Get all attendance records for this section
+    attendance_records = Attendance.objects.filter(
+        session__section=section
+    ).values('student_id', 'session_id', 'is_present')
+    
+    return JsonResponse(list(attendance_records), safe=False)
+
+@login_required
+@faculty_required
+@require_http_methods(["POST"])
+def save_attendance(request, section_id):
+    """Save attendance data for a student in a session."""
+    section = get_object_or_404(Section, id=section_id)
+    
+    # Check if user is a faculty of this section or superuser
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        student_id = data.get('student_id')
+        session_id = data.get('session_id')
+        is_present = data.get('is_present')
+        
+        if not all([student_id, session_id, is_present is not None]):
+            return JsonResponse({'success': False, 'message': 'Missing required fields'}, status=400)
+        
+        # Get or create attendance record
+        attendance, created = Attendance.objects.get_or_create(
+            student_id=student_id,
+            session_id=session_id,
+            defaults={'is_present': is_present}
+        )
+        
+        if not created:
+            attendance.is_present = is_present
+            attendance.save()
+        
+        return JsonResponse({'success': True})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)

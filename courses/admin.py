@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Course, Section, Student, Enrollment, CLO, AssessmentTemplate, AssessmentComponent, AssessmentMark, Attainment,
-    ProjectGroup, ProjectGroupEnrollment, Session
+    ProjectGroup, ProjectGroupEnrollment, Session, Attendance
 )
 
 @admin.register(Course)
@@ -69,4 +69,12 @@ class ProjectGroupEnrollmentAdmin(admin.ModelAdmin):
     list_display = ('project_group', 'student')
     list_filter = ('project_group__section__course', 'project_group__section__semester', 'project_group__section__year')
     search_fields = ('student__student_id', 'student__name', 'project_group__project_name')
+
+@admin.register(Attendance)
+class AttendanceAdmin(admin.ModelAdmin):
+    list_display = ('student', 'session', 'is_present', 'created_at', 'updated_at')
+    list_filter = ('is_present', 'session__section__course', 'session__section__semester', 'session__section__year')
+    search_fields = ('student__student_id', 'student__name', 'session__section__course__code')
+    ordering = ('-session__date', 'student__student_id')
+
 admin.site.register(Session)

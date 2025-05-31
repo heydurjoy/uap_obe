@@ -720,6 +720,100 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Load existing attendance data
+    function loadAttendance() {
+        const sectionId = '{{ section.id }}';
+        fetch(`/courses/sections/${sectionId}/attendance/`)
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(record => {
+                    const checkbox = document.querySelector(
+                        `.attendance-checkbox[data-student-id="${record.student_id}"][data-session-id="${record.session_id}"]`
+                    );
+                    if (checkbox) {
+                        checkbox.checked = record.is_present;
+                        // Trigger change event to update totals
+                        const event = new Event('change');
+                        checkbox.dispatchEvent(event);
+                    }
+                });
+            })
+            .catch(error => console.error('Error loading attendance:', error));
+    }
+
+    // Save attendance when checkbox changes
+    function saveAttendance(studentId, sessionId, isPresent) {
+        const sectionId = '{{ section.id }}';
+        fetch(`/courses/sections/${sectionId}/attendance/save/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                student_id: studentId,
+                session_id: sessionId,
+                is_present: isPresent
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Error saving attendance:', data.message);
+                // Revert checkbox if save failed
+                const checkbox = document.querySelector(
+                    `.attendance-checkbox[data-student-id="${studentId}"][data-session-id="${sessionId}"]`
+                );
+                if (checkbox) {
+                    checkbox.checked = !isPresent;
+                    // Update totals
+                    const event = new Event('change');
+                    checkbox.dispatchEvent(event);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error saving attendance:', error);
+            // Revert checkbox on error
+            const checkbox = document.querySelector(
+                `.attendance-checkbox[data-student-id="${studentId}"][data-session-id="${sessionId}"]`
+            );
+            if (checkbox) {
+                checkbox.checked = !isPresent;
+                // Update totals
+                const event = new Event('change');
+                checkbox.dispatchEvent(event);
+            }
+        });
+    }
+
+    // Update checkbox change handlers
+    const attendanceCheckboxes = document.querySelectorAll('.attendance-checkbox');
+    attendanceCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const studentId = this.dataset.studentId;
+            const sessionId = this.dataset.sessionId;
+            const isPresent = this.checked;
+
+            // Update totals
+            const row = this.closest('tr');
+            const totalCell = row.querySelector('.attendance-count');
+            const percentageCell = row.querySelector('.attendance-percentage');
+            const totalCheckboxes = row.querySelectorAll('.attendance-checkbox:checked').length;
+            const totalClasses = parseInt(document.getElementById('totalClassesInput').value, 10);
+            
+            totalCell.textContent = totalCheckboxes;
+            const percentage = Math.round((totalCheckboxes / totalClasses) * 100);
+            percentageCell.textContent = percentage + '%';
+
+            // Save to database
+            saveAttendance(studentId, sessionId, isPresent);
+        });
+    });
+
+    // Load attendance data when page loads
+    loadAttendance();
+
     // Horizontal scrolling with Shift + Mouse wheel
     const attendanceTableContainer = document.querySelector('.attendance-table-container');
     if (attendanceTableContainer) {
@@ -913,22 +1007,6 @@ document.addEventListener('DOMContentLoaded', function() {
             percentageCell.textContent = percentage + '%';
         });
     }
-
-    // Update the existing checkbox change handler
-    const attendanceCheckboxes = document.querySelectorAll('.attendance-checkbox');
-    attendanceCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const row = this.closest('tr');
-            const totalCell = row.querySelector('.attendance-count');
-            const percentageCell = row.querySelector('.attendance-percentage');
-            const totalCheckboxes = row.querySelectorAll('.attendance-checkbox:checked').length;
-            const totalClasses = parseInt(totalClassesInput.value, 10);
-            
-            totalCell.textContent = totalCheckboxes;
-            const percentage = Math.round((totalCheckboxes / totalClasses) * 100);
-            percentageCell.textContent = percentage + '%';
-        });
-    });
 
     // Handle select all checkboxes
     const selectAllCheckboxes = document.querySelectorAll('.select-all-checkbox');
