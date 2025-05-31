@@ -253,7 +253,7 @@
                                         <td class="sticky-column second-column">{{ enrollment.student.name }}</td>
                                         <!-- Session Columns -->
                                         {% for session in sessions %}
-                                        <td class="session-column text-center attendance-cell">
+                                        <td class="session-column text-center attendance-cell" style="cursor: pointer;" onclick="this.querySelector('.attendance-checkbox').click()">
                                             <div class="checkbox-wrapper">
                                                 <input type="checkbox" class="attendance-checkbox" 
                                                        data-student-id="{{ enrollment.student.id }}"
@@ -720,6 +720,17 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Horizontal scrolling with Shift + Mouse wheel
+    const attendanceTableContainer = document.querySelector('.attendance-table-container');
+    if (attendanceTableContainer) {
+        attendanceTableContainer.addEventListener('wheel', function(e) {
+            if (e.shiftKey) {
+                e.preventDefault();
+                this.scrollLeft += e.deltaY;
+            }
+        });
+    }
+
     // Student search functionality
     const studentInput = document.getElementById('student-identifier-input');
     const suggestionsDiv = document.getElementById('student-suggestions');
