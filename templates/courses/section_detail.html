@@ -225,7 +225,7 @@
                                                     <span class="session-date" style="font-size: 10px">{{ session.date|date:"M d" }}</span>
                                                     {% if session.is_holiday %}
                                                     {% with holiday=session.date|get_holiday %}
-                                                    <span class="badge bg-danger ms-1" title="{{ holiday.name }}">Holiday</span>
+                                                    <span class="badge bg-danger ms-1" title="{{ holiday.name }}">H</span>
                                                     {% endwith %}
                                                     {% endif %}
                                                 </div>

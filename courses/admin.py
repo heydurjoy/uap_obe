@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Course, Section, Student, Enrollment, CLO, AssessmentTemplate, AssessmentComponent, AssessmentMark, Attainment,
-    ProjectGroup, ProjectGroupEnrollment
+    ProjectGroup, ProjectGroupEnrollment, Session
 )
 
 @admin.register(Course)
@@ -69,3 +69,4 @@ class ProjectGroupEnrollmentAdmin(admin.ModelAdmin):
     list_display = ('project_group', 'student')
     list_filter = ('project_group__section__course', 'project_group__section__semester', 'project_group__section__year')
     search_fields = ('student__student_id', 'student__name', 'project_group__project_name')
+admin.site.register(Session)

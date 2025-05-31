@@ -1038,84 +1038,97 @@ def delete_clo_view(request, section_id, clo_id):
 
 
 
-
-
 def add_session_dates_view(request, section_id):
     section = get_object_or_404(Section, id=section_id)
 
-    # Check if user is a faculty of this section
+    # Permission check
     if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
         messages.error(request, 'You do not have permission to add session dates for this section.')
         return redirect('courses:section_detail', section_id=section.id)
 
-    # Check if sessions already exist
     if Session.objects.filter(section=section).exists():
-        messages.error(request,
-                       'Session dates have already been created for this section. Please contact the administrator to update them.')
+        messages.error(request, 'Session dates already exist. Contact admin to update them.')
         return redirect('courses:section_detail', section_id=section.id)
 
     if request.method == 'POST':
         first_date_str = request.POST.get('first_date')
         second_date_str = request.POST.get('second_date')
 
-        if first_date_str and second_date_str:
-            try:
-                first_date = datetime.strptime(first_date_str, '%Y-%m-%d').date()
-                second_date = datetime.strptime(second_date_str, '%Y-%m-%d').date()
-
-                num_sessions = 14 if section.course.is_lab else 28
-                session_number = 1
-                week_count = 0
-
-                with transaction.atomic():
-                    while session_number <= num_sessions:
-                        # Determine the session date
-                        if session_number % 2 == 1:
-                            current_date = first_date + timedelta(weeks=week_count)
-                        else:
-                            current_date = second_date + timedelta(weeks=week_count)
-                            week_count += 1
-
-                        # Check for single-day or range holiday
-                        holidays = Holiday.objects.filter(start_date__lte=current_date).filter(
-                            Q(end_date__isnull=True) | Q(end_date__gte=current_date)
-                        )
-
-                        skip = False
-                        is_holiday = False
-
-                        for holiday in holidays:
-                            if holiday.end_date is None:
-                                # Single-day holiday
-                                if holiday.start_date == current_date:
-                                    is_holiday = True
-                                    break
-                            else:
-                                # Holiday range: skip this session date entirely
-                                if holiday.start_date <= current_date <= holiday.end_date:
-                                    skip = True
-                                    break
-
-                        if skip:
-                            continue  # Retry same session_number on next week
-
-                        # Save session (holiday or regular)
-                        Session.objects.create(
-                            section=section,
-                            session_number=session_number,
-                            date=current_date,
-                            is_holiday=is_holiday
-                        )
-                        session_number += 1
-
-                messages.success(request, f'Successfully created {num_sessions} sessions.')
-            except Exception as e:
-                messages.error(request, f'Error creating sessions: {str(e)}')
-        else:
+        if not first_date_str or not second_date_str:
             messages.error(request, 'Please provide both first and second session dates.')
+            return redirect('courses:section_detail', section_id=section.id)
+
+        try:
+            first_date = datetime.strptime(first_date_str, '%Y-%m-%d').date()
+            second_date = datetime.strptime(second_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            messages.error(request, 'Invalid date format.')
+            return redirect('courses:section_detail', section_id=section.id)
+
+        interval = (second_date - first_date).days
+        num_sessions = 14 if section.course.is_lab else 28
+        session_number = 1
+        week_index = 0
+        sessions = []
+
+        # Preload single-day holiday dates for fast lookup
+        single_holiday_dates = set(Holiday.objects.filter(end_date__isnull=True).values_list('start_date', flat=True))
+        print(single_holiday_dates)
+        try:
+            while session_number <= num_sessions:
+                # Calculate target_date for current session
+                if session_number % 2 == 1:  # First session of the week
+                    target_date = first_date + timedelta(weeks=week_index)
+                else:  # Second session of the week
+                    target_date = first_date + timedelta(days=interval + week_index * 7)
+
+                # Check if target_date is a single-day holiday
+                print(target_date, type(target_date))
+                if target_date in single_holiday_dates:
+                    sessions.append(Session(
+                        section=section,
+                        session_number=session_number,
+                        date=target_date,
+                        is_holiday=True
+                    ))
+                    session_number += 1
+                    # Increment week_index after both sessions (every 2 sessions)
+                    if session_number % 2 == 1:
+                        week_index += 1
+                    continue
+
+                # Check if target_date falls within any holiday range
+                range_holiday = Holiday.objects.filter(
+                    start_date__lte=target_date,
+                    end_date__gte=target_date
+                ).first()
+
+                if range_holiday:
+                    # Skip the whole week by increasing week_index
+                    week_index += 1
+                    continue
+
+                # Create a normal session (not holiday)
+                sessions.append(Session(
+                    section=section,
+                    session_number=session_number,
+                    date=target_date,
+                    is_holiday=False
+                ))
+                session_number += 1
+
+                # Increment week_index after both sessions (every 2 sessions)
+                if session_number % 2 == 1:
+                    week_index += 1
+
+            # Bulk create all sessions
+            Session.objects.bulk_create(sessions)
+            messages.success(request, f"Successfully created {len(sessions)} sessions.")
+
+        except Exception as e:
+            messages.error(request, f"Error creating sessions: {str(e)}")
 
     return redirect('courses:section_detail', section_id=section.id)
-
 
 @login_required
 @faculty_required
