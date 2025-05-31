@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load course_extras %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -125,9 +126,13 @@
                                                 <a href="{% url 'courses:edit_enrollment' enrollment.id %}" class="btn btn-sm btn-outline-secondary ms-1">
                                                     <i class="fas fa-edit me-1"></i>Edit
                                                 </a>
-                                                <button type="button" class="btn btn-sm btn-outline-danger ms-1" data-bs-toggle="modal" data-bs-target="#deleteEnrollmentModal" data-enrollment-id="{{ enrollment.id }}" data-student-name="{{ enrollment.student.name }}">
-                                                    <i class="fas fa-trash-alt me-1"></i>Delete
-                                                </button>
+                                                <form method="post" action="{% url 'courses:delete_enrollment' enrollment.id %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger ms-1" 
+                                                            onclick="return confirm('Are you sure you want to remove {{ enrollment.student.name }} from this section?');">
+                                                        <i class="fas fa-trash-alt me-1"></i>Delete
+                                                    </button>
+                                                </form>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -157,6 +162,15 @@
                         </div>
                         {% if sessions %}
                         <div class="d-flex gap-2">
+                            <div class="input-group" style="width: 200px;">
+                                <span class="input-group-text">Total Classes</span>
+                                <input type="number" class="form-control form-control-sm" id="totalClassesInput" 
+                                       value="{{ section.total_classes }}" min="1" max="100"
+                                       data-section-id="{{ section.id }}">
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="saveTotalClassesBtn">
+                                    <i class="fas fa-save"></i>
+                                </button>
+                            </div>
                             <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSessionModal">
                                 <i class="fas fa-plus me-1"></i>Add Sessions
                             </button>
@@ -199,26 +213,31 @@
                             <table class="table table-bordered table-hover attendance-table">
                                 <thead>
                                     <tr>
-                                        <th class="sticky-column first-column">ID</th>
-                                        <th class="sticky-column second-column">Name</th>
+                                        <th class="sticky-column first-column" style="font-size: 50px; text-align: center">ID</th>
+                                        <th class="sticky-column second-column" style="font-size: 50px; text-align: center">Name</th>
                                         <!-- Session Headers -->
                                         {% for session in sessions %}
                                         <th class="session-column">
-                                            <div class="session-header" data-session-id="{{ session.id }}" style="cursor: pointer;">
-                                                <div class="session-number">#{{ session.session_number|stringformat:"02d" }}</div>
-                                                <div class="session-date-container">
+                                            <div class="session-header {% if session.is_holiday %}holiday-session{% endif %}" data-session-id="{{ session.id }}" style="cursor: pointer;">
+                                                <div class="session-number" style="font-size: 32px; text-align: left">#{{ session.session_number|stringformat:"02d" }}</div>
+                                                <div class="session-date-container" style="display: inline">
                                                     <i class="fas fa-calendar-alt session-date-icon"></i>
-                                                    <span class="session-date">{{ session.date|date:"M d" }}</span>
+                                                    <span class="session-date" style="font-size: 10px">{{ session.date|date:"M d" }}</span>
+                                                    {% if session.is_holiday %}
+                                                    {% with holiday=session.date|get_holiday %}
+                                                    <span class="badge bg-danger ms-1" title="{{ holiday.name }}">Holiday</span>
+                                                    {% endwith %}
+                                                    {% endif %}
                                                 </div>
                                             </div>
-                                            <div class="select-all-wrapper">
+                                            <div class="select-all-wrapper" style="display: block">
                                                 <label class="select-all-label" title="Select all for this session">
                                                     <div class="checkbox-wrappers">
-                                                        <input type="checkbox" class="select-all-checkbox" 
-                                                               data-session-id="{{ session.id }}">
+                                                        <input type="checkbox" class="select-all-checkbox"
+                                                               data-session-id="{{ session.id }}"> All
 {#                                                        <span class="checkmark"></span>#}
                                                     </div>
-                                                    <span class="select-all-text">All</span>
+{#                                                    <span class="select-all-text">All</span>#}
                                                 </label>
                                             </div>
                                         </th>
@@ -291,7 +310,7 @@
 </div>
 
 <!-- Delete All Sessions Modal -->
-<div class="modal fade" id="deleteAllSessionsModal" tabindex="-1" aria-labelledby="deleteAllSessionsModalLabel" aria-hidden="true">
+<div class="modal fade" id="deleteAllSessionsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -319,7 +338,7 @@
 </div>
 
 <!-- Add Session Modal -->
-<div class="modal fade" id="addSessionModal" tabindex="-1">
+<div class="modal fade" id="addSessionModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -348,7 +367,7 @@
 </div>
 
 <!-- Date Picker Modal -->
-<div class="modal fade date-picker-modal" id="datePickerModal" tabindex="-1">
+<div class="modal fade" id="datePickerModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -434,13 +453,14 @@
     left: 0;
     width: 100px;
     border-right: 2px solid rgba(5, 150, 105, 0.68) !important;
+    margin-left: 0;
 }
 
 .second-column {
-    margin-left: -10px;
     left: 100px;
     width: 200px;
     border-right: 2px solid rgba(5, 150, 105, 0.68) !important;
+    margin-left: 0;
 }
 
 .total-column {
@@ -448,6 +468,8 @@
     width: 80px;
     border-left: 2px solid rgba(5, 150, 105, 0.68) !important;
     box-shadow: -2px 0 5px rgba(12, 121, 140, 0.56);
+    margin-right: 0;
+    background-color: #e3e6eb;
 }
 
 .percentage-column {
@@ -455,27 +477,30 @@
     width: 60px;
     border-left: 2px solid rgba(5, 150, 105, 0.68) !important;
     box-shadow: -2px 0 5px rgba(26, 190, 219, 0.43);
+    margin-right: 0;
+    background-color: #e3e6eb;
 }
 
 [data-bs-theme="dark"] .total-column,
 [data-bs-theme="dark"] .percentage-column {
-    box-shadow: -2px 0 5px rgba(0,0,0,0.3);
+    background-color: #2b3035;
 }
 
 /* Attendance Container Styles */
 .attendance-container {
     background-color: var(--card-bg);
     border-radius: 0.5rem;
-    padding: 0px;
+    padding: 0;
     position: relative;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    overflow: hidden;
 }
 
 .attendance-table-container {
     position: relative;
     overflow-x: auto;
-    margin: 0 -1rem;
-    padding: 0 1rem;
+    margin: 0;
+    padding: 0;
     scroll-padding-left: 300px;
     scroll-padding-right: 140px;
     scrollbar-width: thin;
@@ -508,28 +533,32 @@
     background-color: var(--card-bg);
 }
 
-/* Update table styles for better hover effect */
-.attendance-table tbody tr:hover td:not(.sticky-column) {
-    background-color: rgba(var(--bs-primary-rgb), 0.03);
+/* Add subtle shadow to indicate scrollable content */
+.attendance-table-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 140px;
+    background: linear-gradient(to right, transparent, var(--card-bg));
+    pointer-events: none;
+    opacity: 0.9;
+    z-index: 1;
 }
 
-.attendance-table tbody tr:hover .sticky-column {
-    background-color: #d8dce3;
-}
-
-[data-bs-theme="dark"] .attendance-table tbody tr:hover .sticky-column {
-    background-color: #343a40;
-}
-
-/* Make sure sticky columns maintain their background on hover */
-.sticky-column {
-    background-color: #e3e6eb;
-    z-index: 2;
-    transition: all 0.2s ease;
-}
-
-[data-bs-theme="dark"] .sticky-column {
-    background-color: #2b3035;
+/* Add shadow to the left side as well */
+.attendance-table-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 300px;
+    background: linear-gradient(to left, transparent, var(--card-bg));
+    pointer-events: none;
+    opacity: 0.9;
+    z-index: 1;
 }
 
 /* Ensure proper z-index for sticky columns */
@@ -543,6 +572,19 @@
 
 .total-column, .percentage-column {
     z-index: 2;
+}
+
+/* Update table styles for better hover effect */
+.attendance-table tbody tr:hover td:not(.sticky-column) {
+    background-color: rgba(var(--bs-primary-rgb), 0.03);
+}
+
+.attendance-table tbody tr:hover .sticky-column {
+    background-color: #d8dce3;
+}
+
+[data-bs-theme="dark"] .attendance-table tbody tr:hover .sticky-column {
+    background-color: #343a40;
 }
 
 /* Update session header hover effect */
@@ -587,19 +629,6 @@
 .attendance-container {
     padding: 1rem;
     overflow: hidden;
-}
-
-/* Add subtle shadow to indicate scrollable content */
-.attendance-table-container::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 40px;
-    background: linear-gradient(to right, transparent, var(--card-bg));
-    pointer-events: none;
-    opacity: 0.9;
 }
 
 /* Improve table header appearance */
@@ -668,12 +697,79 @@
 .attendance-cell:hover .checkmark {
     background-color: rgba(var(--bs-primary-rgb), 0.1);
 }
+
+/* Holiday Session Styles */
+.holiday-session {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+}
+
+.holiday-session .session-number {
+    color: #dc3545;
+}
+
+.holiday-session .session-date {
+    color: #dc3545;
+}
+
+.holiday-session:hover {
+    background-color: rgba(220, 53, 69, 0.15) !important;
+}
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Student search functionality
+    const studentInput = document.getElementById('student-identifier-input');
+    const suggestionsDiv = document.getElementById('student-suggestions');
+    let timeoutId;
+
+    studentInput.addEventListener('input', function() {
+        clearTimeout(timeoutId);
+        const searchTerm = this.value.trim();
+        
+        if (searchTerm.length < 2) {
+            suggestionsDiv.style.display = 'none';
+            return;
+        }
+
+        timeoutId = setTimeout(() => {
+            fetch(`/courses/ajax/search-students/?term=${encodeURIComponent(searchTerm)}`)
+                .then(response => response.json())
+                .then(students => {
+                    suggestionsDiv.innerHTML = '';
+                    if (students.length > 0) {
+                        students.forEach(student => {
+                            const div = document.createElement('div');
+                            div.className = 'list-group-item list-group-item-action';
+                            div.textContent = `${student.student_id} - ${student.name}`;
+                            div.style.cursor = 'pointer';
+                            div.addEventListener('click', () => {
+                                studentInput.value = student.student_id;
+                                suggestionsDiv.style.display = 'none';
+                            });
+                            suggestionsDiv.appendChild(div);
+                        });
+                        suggestionsDiv.style.display = 'block';
+                    } else {
+                        suggestionsDiv.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    suggestionsDiv.style.display = 'none';
+                });
+        }, 300);
+    });
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!studentInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+            suggestionsDiv.style.display = 'none';
+        }
+    });
+
     // Initialize tooltips
     const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     tooltips.forEach(tooltip => {
@@ -695,8 +791,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             dateInput.value = formattedDate;
             
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('datePickerModal'));
+            // Show modal using data attributes
+            const datePickerModal = document.getElementById('datePickerModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(datePickerModal);
             modal.show();
         });
     });
@@ -726,11 +823,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 dateSpan.textContent = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 
                 // Hide modal
-                bootstrap.Modal.getInstance(document.getElementById('datePickerModal')).hide();
+                const datePickerModal = document.getElementById('datePickerModal');
+                const modal = bootstrap.Modal.getInstance(datePickerModal);
+                if (modal) {
+                    modal.hide();
+                }
                 
                 // Show success message
                 const toast = new bootstrap.Toast(document.getElementById('successToast'));
-                document.getElementById('toastMessage').textContent = 'Session date updated successfully';
+                const toastMsg = document.getElementById('toastMessage');
+                if (toastMsg) {
+                    toastMsg.textContent = 'Session date updated successfully';
+                }
                 toast.show();
             } else {
                 throw new Error(data.message || 'Failed to update date');
@@ -738,47 +842,85 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error:', error);
-            // Show error message
-            const toast = new bootstrap.Toast(document.getElementById('errorToast'));
-            document.getElementById('errorToastMessage').textContent = 'Failed to update session date';
-            toast.show();
+            alert('Failed to update session date. Please try again.');
         });
     });
 
-    // Handle attendance checkboxes
-    const attendanceCells = document.querySelectorAll('.attendance-cell');
-    const totalSessions = parseInt('{{ sessions|length }}', 10);
-
-    attendanceCells.forEach(cell => {
-        const checkbox = cell.querySelector('.attendance-checkbox');
-        
-        cell.addEventListener('click', function(e) {
-            // Prevent double-triggering if clicking directly on checkbox
-            if (e.target === checkbox) return;
+    // Handle total classes input
+    const totalClassesInput = document.getElementById('totalClassesInput');
+    const saveTotalClassesBtn = document.getElementById('saveTotalClassesBtn');
+    
+    if (totalClassesInput && saveTotalClassesBtn) {
+        saveTotalClassesBtn.addEventListener('click', function(e) {
+            e.preventDefault();
             
-            // Toggle checkbox
-            checkbox.checked = !checkbox.checked;
+            const newValue = totalClassesInput.value;
+            const sectionId = totalClassesInput.dataset.sectionId;
             
-            // Trigger change event
-            const event = new Event('change');
-            checkbox.dispatchEvent(event);
+            // Send update to server
+            fetch(`/courses/sections/${sectionId}/update-total-classes/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ total_classes: newValue })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update all percentage calculations
+                    updateAllPercentages(newValue);
+                    // Show success message
+                    const toast = new bootstrap.Toast(document.getElementById('successToast'));
+                    const toastMsg = document.getElementById('toastMessage');
+                    if (toastMsg) {
+                        toastMsg.textContent = 'Total classes updated successfully';
+                    }
+                    toast.show();
+                } else {
+                    throw new Error(data.message || 'Failed to update total classes');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update total classes. Please try again.');
+            });
         });
+    }
 
-        checkbox.addEventListener('change', function() {
-            const row = this.closest('tr');
+    // Function to update all percentages
+    function updateAllPercentages(totalClasses) {
+        const rows = document.querySelectorAll('.attendance-table tbody tr');
+        rows.forEach(row => {
             const totalCell = row.querySelector('.attendance-count');
             const percentageCell = row.querySelector('.attendance-percentage');
             const totalCheckboxes = row.querySelectorAll('.attendance-checkbox:checked').length;
             
             totalCell.textContent = totalCheckboxes;
-            const percentage = Math.round((totalCheckboxes / totalSessions) * 100);
+            const percentage = Math.round((totalCheckboxes / totalClasses) * 100);
+            percentageCell.textContent = percentage + '%';
+        });
+    }
+
+    // Update the existing checkbox change handler
+    const attendanceCheckboxes = document.querySelectorAll('.attendance-checkbox');
+    attendanceCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const row = this.closest('tr');
+            const totalCell = row.querySelector('.attendance-count');
+            const percentageCell = row.querySelector('.attendance-percentage');
+            const totalCheckboxes = row.querySelectorAll('.attendance-checkbox:checked').length;
+            const totalClasses = parseInt(totalClassesInput.value, 10);
+            
+            totalCell.textContent = totalCheckboxes;
+            const percentage = Math.round((totalCheckboxes / totalClasses) * 100);
             percentageCell.textContent = percentage + '%';
         });
     });
 
     // Handle select all checkboxes
     const selectAllCheckboxes = document.querySelectorAll('.select-all-checkbox');
-    
     selectAllCheckboxes.forEach(selectAll => {
         selectAll.addEventListener('change', function() {
             const sessionId = this.dataset.sessionId;
@@ -798,9 +940,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Update select all checkbox state when individual checkboxes change
-    const attendanceCheckboxes = document.querySelectorAll('.attendance-checkbox');
-    
-    attendanceCheckboxes.forEach(checkbox => {
+    const individualCheckboxes = document.querySelectorAll('.attendance-checkbox');
+    individualCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const sessionId = this.dataset.sessionId;
             const sessionCheckboxes = document.querySelectorAll(`.attendance-checkbox[data-session-id="${sessionId}"]`);
@@ -852,5 +993,27 @@ document.addEventListener('DOMContentLoaded', function() {
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
         <div class="toast-body" id="errorToastMessage"></div>
+    </div>
+</div>
+
+<!-- Delete Enrollment Modal -->
+<div class="modal fade" id="deleteEnrollmentModal" tabindex="-1" aria-labelledby="deleteEnrollmentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteEnrollmentModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to remove <span id="studentName" class="fw-bold"></span> from this section?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteEnrollmentForm" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div> 

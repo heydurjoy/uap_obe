@@ -9,7 +9,7 @@ from .models import (
     AssessmentTemplate, AssessmentComponent, AssessmentMark, Attainment,
     ProjectGroup, Session
 )
-from accounts.models import Faculty
+from accounts.models import Faculty, Holiday
 from programs.models import Program, PLO, Department
 from .forms import CourseForm, SectionForm, BulkEnrollForm, EnrollmentForm, CLOForm
 from django.core.exceptions import ValidationError
@@ -1035,61 +1035,87 @@ def delete_clo_view(request, section_id, clo_id):
 
 @login_required
 @faculty_required
+
+
+
+
+
 def add_session_dates_view(request, section_id):
     section = get_object_or_404(Section, id=section_id)
-    
+
     # Check if user is a faculty of this section
     if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
         messages.error(request, 'You do not have permission to add session dates for this section.')
         return redirect('courses:section_detail', section_id=section.id)
-    
+
     # Check if sessions already exist
-    existing_sessions = Session.objects.filter(section=section).exists()
-    if existing_sessions:
-        messages.error(request, 'Session dates have already been created for this section. Please contact the administrator to update them.')
+    if Session.objects.filter(section=section).exists():
+        messages.error(request,
+                       'Session dates have already been created for this section. Please contact the administrator to update them.')
         return redirect('courses:section_detail', section_id=section.id)
-    
+
     if request.method == 'POST':
-        first_date = request.POST.get('first_date')
-        second_date = request.POST.get('second_date')
-        
-        if first_date and second_date:
-            # Convert string dates to datetime objects
-            first_date = datetime.strptime(first_date, '%Y-%m-%d').date()
-            second_date = datetime.strptime(second_date, '%Y-%m-%d').date()
-            
-            # Calculate the interval between the two dates
-            interval = (second_date - first_date).days
-            
-            # Determine the number of sessions based on the course type
-            num_sessions = 14 if section.course.is_lab else 28
-            
+        first_date_str = request.POST.get('first_date')
+        second_date_str = request.POST.get('second_date')
+
+        if first_date_str and second_date_str:
             try:
+                first_date = datetime.strptime(first_date_str, '%Y-%m-%d').date()
+                second_date = datetime.strptime(second_date_str, '%Y-%m-%d').date()
+
+                num_sessions = 14 if section.course.is_lab else 28
+                session_number = 1
+                week_count = 0
+
                 with transaction.atomic():
-                    # Create the sessions
-                    for i in range(num_sessions):
-                        # Calculate the date by adding weeks (7 days) multiplied by the week number
-                        # For example, if first date is Monday and second is Wednesday,
-                        # next dates will be Monday+7, Wednesday+7, Monday+14, Wednesday+14, etc.
-                        week_number = i // 2  # Integer division to get week number
-                        is_second_date = i % 2  # Check if it's the second date of the week
-                        
-                        if is_second_date:
-                            # For second date of the week (e.g., Wednesday)
-                            session_date = first_date + timedelta(days=interval + (week_number * 7))
+                    while session_number <= num_sessions:
+                        # Determine the session date
+                        if session_number % 2 == 1:
+                            current_date = first_date + timedelta(weeks=week_count)
                         else:
-                            # For first date of the week (e.g., Monday)
-                            session_date = first_date + timedelta(days=week_number * 7)
-                            
-                        Session.objects.create(section=section, session_number=i + 1, date=session_date)
-                
+                            current_date = second_date + timedelta(weeks=week_count)
+                            week_count += 1
+
+                        # Check for single-day or range holiday
+                        holidays = Holiday.objects.filter(start_date__lte=current_date).filter(
+                            Q(end_date__isnull=True) | Q(end_date__gte=current_date)
+                        )
+
+                        skip = False
+                        is_holiday = False
+
+                        for holiday in holidays:
+                            if holiday.end_date is None:
+                                # Single-day holiday
+                                if holiday.start_date == current_date:
+                                    is_holiday = True
+                                    break
+                            else:
+                                # Holiday range: skip this session date entirely
+                                if holiday.start_date <= current_date <= holiday.end_date:
+                                    skip = True
+                                    break
+
+                        if skip:
+                            continue  # Retry same session_number on next week
+
+                        # Save session (holiday or regular)
+                        Session.objects.create(
+                            section=section,
+                            session_number=session_number,
+                            date=current_date,
+                            is_holiday=is_holiday
+                        )
+                        session_number += 1
+
                 messages.success(request, f'Successfully created {num_sessions} sessions.')
             except Exception as e:
                 messages.error(request, f'Error creating sessions: {str(e)}')
         else:
             messages.error(request, 'Please provide both first and second session dates.')
-    
+
     return redirect('courses:section_detail', section_id=section.id)
+
 
 @login_required
 @faculty_required
@@ -1139,5 +1165,31 @@ def update_session_date_view(request, session_id):
         
         return JsonResponse({'success': True})
         
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@faculty_required
+def update_section_total_classes_view(request, section_id):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'})
+    
+    try:
+        section = get_object_or_404(Section, id=section_id)
+        
+        # Check if user has permission for this section
+        if request.user.faculty not in section.faculties.all():
+            return JsonResponse({'success': False, 'message': 'You do not have permission to update this section'})
+        
+        data = json.loads(request.body)
+        total_classes = int(data.get('total_classes', 28))
+        
+        if total_classes < 1:
+            return JsonResponse({'success': False, 'message': 'Total classes must be at least 1'})
+        
+        section.total_classes = total_classes
+        section.save()
+        
+        return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})

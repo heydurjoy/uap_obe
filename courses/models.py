@@ -46,6 +46,7 @@ class Section(models.Model):
     primary_faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='primary_sections')
     secondary_faculty = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name='secondary_sections')
     faculties = models.ManyToManyField(Faculty, related_name='sections')
+    total_classes = models.PositiveIntegerField(default=28, help_text="Total number of classes for attendance calculation")
     
     class Meta:
         unique_together = ['course', 'name', 'year', 'semester']
@@ -180,6 +181,7 @@ class Session(models.Model):
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='sessions')
     session_number = models.IntegerField()
     date = models.DateField()
+    is_holiday = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['session_number']
