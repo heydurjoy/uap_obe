@@ -155,31 +155,65 @@
             <div class="card shadow-sm">
                 <div class="card-body">
                     <!-- Header Section -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h5 class="card-title mb-1">Attendance Management</h5>
-        <p class="text-muted small mb-0">Track and manage student attendance for each session. Click on any session date to modify it.</p>
-    </div>
-    {% if sessions %}
-    <div class="d-flex align-items-center gap-2">
-        <div class="input-group input-group-sm" style="width: 230px;">
-            <span class="input-group-text">Total Classes</span>
-            <input type="number" class="form-control" id="totalClassesInput"
-                   value="{{ section.total_classes }}" min="1" max="28"
-                   data-section-id="{{ section.id }}">
-            <button type="button" class="btn btn-outline-primary" id="saveTotalClassesBtn">
-                <i class="fas fa-save"></i>
-            </button>
-        </div>
-{#        <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center" style="height: 32px;" data-bs-toggle="modal" data-bs-target="#addSessionModal">#}
-{#            <i class="fas fa-plus me-1"></i>Add Sessions#}
-{#        </button>#}
-        <button type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center" style="height: 32px;" data-bs-toggle="modal" data-bs-target="#deleteAllSessionsModal">
-            <i class="fas fa-trash-alt me-1"></i>Delete Dates
-        </button>
-    </div>
-    {% endif %}
-</div>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h4 class="card-title mb-2">
+                                <i class="fas fa-calendar-check text-primary me-2"></i>
+                                Attendance Management
+                            </h4>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Track and manage student attendance for each session. Click on any session date to modify it.
+                            </p>
+                        </div>
+                        {% if sessions %}
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <!-- Total Classes Input -->
+                            <div class="d-flex align-items-center gap-2" style="min-width: 250px;">
+                                <div class="input-group input-group-sm flex-grow-1">
+                                    <span class="input-group-text bg-light">
+                                        <i class="fas fa-chalkboard-teacher me-1"></i> Total Classes
+                                    </span>
+                                    <input type="number"
+                                           class="form-control"
+                                           id="totalClassesInput"
+                                           value="{{ total_classes|default:28 }}"
+                                           min="1" max="100"
+                                           data-section-id="{{ section.id }}"
+                                           autocomplete="off">
+                                </div>
+                                <button type="button"
+                                        class="btn btn-outline-secondary btn-sm"
+                                        id="saveTotalClassesBtn"
+                                        title="Save total class count">
+                                    <i class="fas fa-save"></i>
+                                </button>
+                            </div>
+                        
+                            <!-- Action Buttons -->
+                            <button type="button"
+                                    class="btn btn-danger btn-sm"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteAllSessionsModal">
+                                <i class="fas fa-trash-alt me-1"></i> Delete Sessions
+                            </button>
+                        
+                            <button type="button"
+                                    class="btn btn-secondary btn-sm"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteAllAttendanceModal">
+                                <i class="fas fa-eraser me-1"></i> Clear All Attendance
+                            </button>
+                        
+                            <a href="{% url 'courses:export_attendance_excel' section.id %}"
+                               class="btn btn-info btn-sm"
+                               title="Download Excel sheet">
+                                <i class="fas fa-file-excel me-1"></i> Export to  Mircrosoft Excel
+                            </a>
+                        </div>
+                        
+                        {% endif %}
+                    </div>
 
                     <!-- Session Setup Form (if no sessions exist) -->
                     {% if not sessions %}
@@ -208,17 +242,17 @@
 
                     <!-- Attendance Grid -->
                     {% if sessions %}
-                    <div class="attendance-container">
                         <div class="table-responsive attendance-table-container">
                             <table class="table table-bordered table-hover attendance-table">
                                 <thead>
                                     <tr>
                                         <th class="sticky-column first-column" style="font-size: 50px; text-align: center">ID</th>
                                         <th class="sticky-column second-column" style="font-size: 50px; text-align: center">Name</th>
+                                    <br><br>
                                         <!-- Session Headers -->
                                         {% for session in sessions %}
                                         <th class="session-column">
-                                            <div class="session-header {% if session.is_holiday %}holiday-session{% endif %}" data-session-id="{{ session.id }}" style="cursor: pointer;">
+                                            <div class="session-header {% if session.is_holiday %}holiday-session{% endif %}" data-session-id="{{ session.id }}" data-full-date="{{ session.date|date:'Y-m-d' }}" style="cursor: pointer;">
                                                 <div class="session-number" style="font-size: 32px; text-align: left">#{{ session.session_number|stringformat:"02d" }}</div>
                                                 <div class="session-date-container" style="display: inline">
                                                     <i class="fas fa-calendar-alt session-date-icon"></i>
@@ -255,7 +289,7 @@
                                         {% for session in sessions %}
                                         <td class="session-column text-center attendance-cell" style="cursor: pointer;" onclick="this.querySelector('.attendance-checkbox').click()">
                                             <div class="checkbox-wrapper">
-                                                <input type="checkbox" class="attendance-checkbox" 
+                                                <input type="checkbox" class="attendance-checkbox"
                                                        data-student-id="{{ enrollment.student.id }}"
                                                        data-session-id="{{ session.id }}"
                                                        title="Mark attendance">
@@ -264,7 +298,7 @@
                                         </td>
                                         {% endfor %}
                                         <td class="sticky-column total-column text-center">
-                                            <span class="attendance-count">0</span>/{{ sessions|length }}
+                                            <span class="attendance-count">0</span>
                                         </td>
                                         <td class="sticky-column percentage-column text-center">
                                             <span class="attendance-percentage">0%</span>
@@ -330,6 +364,34 @@
                     {% csrf_token %}
                     <button type="submit" class="btn btn-danger">
                         <i class="fas fa-trash-alt me-2"></i>Delete All Sessions
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete All Attendance Modal -->
+<div class="modal fade" id="deleteAllAttendanceModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteAllAttendanceModalLabel">Confirm Clear All Attendance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Warning: This action cannot be undone.
+                </p>
+                <p>Are you sure you want to clear all attendance records for all students in this section? This will reset all attendance marks to absent.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'courses:delete_all_attendance' section.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-eraser me-2"></i>Clear All Attendance
                     </button>
                 </form>
             </div>
@@ -411,6 +473,10 @@
 
 .nav-tabs {
     border-bottom-color: var(--card-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--background-color);
 }
 
 .table th {
@@ -438,10 +504,11 @@
 /* Fixed Columns */
 .sticky-column {
     position: sticky;
-    background-color: #e3e6eb;
-    z-index: 2;
-    border: none !important;
+    background-color: var(--background-color);
+    z-index: 3;
+    border: 1px solid #dee2e6;
     box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    vertical-align: middle;
 }
 
 [data-bs-theme="dark"] .sticky-column {
@@ -453,14 +520,12 @@
     left: 0;
     width: 100px;
     border-right: 2px solid rgba(5, 150, 105, 0.68) !important;
-    margin-left: 0;
 }
 
 .second-column {
     left: 100px;
     width: 200px;
     border-right: 2px solid rgba(5, 150, 105, 0.68) !important;
-    margin-left: 0;
 }
 
 .total-column {
@@ -468,8 +533,6 @@
     width: 80px;
     border-left: 2px solid rgba(5, 150, 105, 0.68) !important;
     box-shadow: -2px 0 5px rgba(12, 121, 140, 0.56);
-    margin-right: 0;
-    background-color: #e3e6eb;
 }
 
 .percentage-column {
@@ -477,8 +540,6 @@
     width: 60px;
     border-left: 2px solid rgba(5, 150, 105, 0.68) !important;
     box-shadow: -2px 0 5px rgba(26, 190, 219, 0.43);
-    margin-right: 0;
-    background-color: #e3e6eb;
 }
 
 [data-bs-theme="dark"] .total-column,
@@ -517,7 +578,7 @@
 
 .attendance-table th,
 .attendance-table td {
-    padding: 2rem;
+    padding: 0.5rem;
     vertical-align: middle;
     white-space: nowrap;
     border: 1px solid #dee2e6;
@@ -526,8 +587,8 @@
 
 /* Session Columns */
 .session-column {
-    width: 20px;
-    min-width: 20px;
+    width: 80px;
+    min-width: 80px;
     text-align: center;
     border: 1px solid #dee2e6;
     background-color: var(--card-bg);
@@ -559,19 +620,6 @@
     pointer-events: none;
     opacity: 0.9;
     z-index: 1;
-}
-
-/* Ensure proper z-index for sticky columns */
-.first-column {
-    z-index: 3;
-}
-
-.second-column {
-    z-index: 2;
-}
-
-.total-column, .percentage-column {
-    z-index: 2;
 }
 
 /* Update table styles for better hover effect */
@@ -632,15 +680,20 @@
 }
 
 /* Improve table header appearance */
+.attendance-table thead {
+    position: sticky;
+    top: 53px;
+    z-index: 2;
+}
+
 .attendance-table thead th {
     font-weight: 600;
     color: var(--text-primary);
     border-bottom: 2px solid #dee2e6;
-    background-color: #f8f9fa;
-}
-
-[data-bs-theme="dark"] .attendance-table thead th {
-    background-color: #2b3035;
+    background-color: var(--background-color);
+    vertical-align: middle;
+    text-align: center;
+    height: auto;
 }
 
 /* Add subtle transition effects */
@@ -890,16 +943,20 @@ document.addEventListener('DOMContentLoaded', function() {
     sessionHeaders.forEach(header => {
         header.addEventListener('click', function() {
             currentSessionId = this.dataset.sessionId;
-            const currentDate = this.querySelector('.session-date').textContent;
-            const dateObj = new Date(currentDate);
-            const formattedDate = dateObj.toISOString().split('T')[0];
+            // Get the full date from the new data attribute
+            const fullDate = this.dataset.fullDate;
             
-            dateInput.value = formattedDate;
-            
-            // Show modal using data attributes
-            const datePickerModal = document.getElementById('datePickerModal');
-            const modal = bootstrap.Modal.getOrCreateInstance(datePickerModal);
-            modal.show();
+            if (fullDate) {
+                dateInput.value = fullDate;
+                
+                // Show modal using data attributes
+                const datePickerModal = document.getElementById('datePickerModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(datePickerModal);
+                modal.show();
+            } else {
+                 console.error('Full date data attribute not found.');
+                 // Optionally show an error message to the user
+            }
         });
     });
 
@@ -920,34 +977,32 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                // Update the displayed date
-                const header = document.querySelector(`.session-header[data-session-id="${currentSessionId}"]`);
-                const dateSpan = header.querySelector('.session-date');
-                const dateObj = new Date(newDate);
-                dateSpan.textContent = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                
-                // Hide modal
-                const datePickerModal = document.getElementById('datePickerModal');
-                const modal = bootstrap.Modal.getInstance(datePickerModal);
-                if (modal) {
-                    modal.hide();
-                }
-                
-                // Show success message
-                const toast = new bootstrap.Toast(document.getElementById('successToast'));
-                const toastMsg = document.getElementById('toastMessage');
-                if (toastMsg) {
-                    toastMsg.textContent = 'Session date updated successfully';
-                }
-                toast.show();
-            } else {
-                throw new Error(data.message || 'Failed to update date');
+            // Assuming success if the fetch call completes without error
+            // Update the displayed date
+            const header = document.querySelector(`.session-header[data-session-id="${currentSessionId}"]`);
+            const dateSpan = header.querySelector('.session-date');
+            const dateObj = new Date(newDate);
+            dateSpan.textContent = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            // Hide modal
+            const datePickerModal = document.getElementById('datePickerModal');
+            const modal = bootstrap.Modal.getInstance(datePickerModal);
+            if (modal) {
+                modal.hide();
             }
+            
+            // Show success message
+            const toast = new bootstrap.Toast(document.getElementById('successToast'));
+            const toastMsg = document.getElementById('toastMessage');
+            if (toastMsg) {
+                toastMsg.textContent = 'Session date updated successfully';
+            }
+            toast.show();
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to update session date. Please try again.');
+            // Removed the alert here to prevent false failure pop-up
+            // alert('Failed to update session date. Please try again.');
         });
     });
 

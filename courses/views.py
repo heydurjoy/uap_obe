@@ -20,6 +20,11 @@ from django import forms
 from datetime import datetime, timedelta
 import json
 from django.views.decorators.http import require_http_methods
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
+from django.http import HttpResponse
+from io import BytesIO
+from openpyxl.utils.cell import get_column_letter
 
 @login_required
 @faculty_required
@@ -71,7 +76,10 @@ def section_detail(request, section_id):
     
     # Get all enrollments for this section and ensure they have Regular enrollment type
     enrollments = Enrollment.objects.filter(section=section).select_related('student').order_by('student__student_id')
-    
+
+    # Get all sessions for this section
+    sessions = section.sessions.all()
+
     # Get assessment template if exists
     template = AssessmentTemplate.objects.filter(section=section).first()
     
@@ -1057,10 +1065,12 @@ def add_session_dates_view(request, section_id):
             return redirect('courses:section_detail', section_id=section.id)
 
         try:
+            # Parse date strings which are in YYYY-MM-DD format from the HTML date input
             first_date = datetime.strptime(first_date_str, '%Y-%m-%d').date()
             second_date = datetime.strptime(second_date_str, '%Y-%m-%d').date()
+
         except ValueError:
-            messages.error(request, 'Invalid date format.')
+            messages.error(request, 'Invalid date format. Please use DD-Mon-YYYY (e.g., 18-Jun-2025).')
             return redirect('courses:section_detail', section_id=section.id)
 
         interval = (second_date - first_date).days
@@ -1081,7 +1091,6 @@ def add_session_dates_view(request, section_id):
                     target_date = first_date + timedelta(days=interval + week_index * 7)
 
                 # Check if target_date is a single-day holiday
-                print(target_date, type(target_date))
                 if target_date in single_holiday_dates:
                     sessions.append(Session(
                         section=section,
@@ -1147,6 +1156,27 @@ def delete_all_sessions_view(request, section_id):
         except Exception as e:
             messages.error(request, f'Error deleting sessions: {str(e)}')
     
+    return redirect('courses:section_detail', section_id=section.id)
+
+@login_required
+@faculty_required
+def delete_all_attendance_view(request, section_id):
+    section = get_object_or_404(Section, id=section_id)
+
+    # Check if user is a faculty of this section or superuser
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        messages.error(request, 'You do not have permission to clear attendance for this section.')
+        return redirect('courses:section_detail', section_id=section.id)
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Delete all attendance records for this section
+                Attendance.objects.filter(session__section=section).delete()
+            messages.success(request, 'All attendance records have been cleared successfully.')
+        except Exception as e:
+            messages.error(request, f'Error clearing attendance: {str(e)}')
+
     return redirect('courses:section_detail', section_id=section.id)
 
 @login_required
@@ -1260,3 +1290,159 @@ def save_attendance(request, section_id):
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@faculty_required
+def export_attendance_excel_view(request, section_id):
+    section = get_object_or_404(Section, id=section_id)
+
+    # Check if user has permission for this section
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        messages.error(request, 'You do not have permission to export attendance for this section.')
+        return redirect('courses:section_detail', section_id=section.id)
+
+    # Fetch data
+    sessions = section.sessions.all().order_by('session_number')
+    enrollments = Enrollment.objects.filter(section=section).select_related('student').order_by('student__student_id')
+    attendance_records = Attendance.objects.filter(session__section=section).select_related('student', 'session')
+
+    # Create a mapping for easy attendance lookup: (student_id, session_id) -> is_present
+    attendance_map = {}
+    for record in attendance_records:
+        attendance_map[(record.student.id, record.session.id)] = record.is_present
+
+    # Define headers now so we can use its length for cell merging
+    headers = ['Student ID', 'Student Name']
+    for session in sessions:
+        headers.append(f'#{session.session_number:02d}') # Change format to #XX
+    headers.append('Total Present')
+    headers.append('Total Classes')
+    headers.append('Attendance %')
+
+    # Create workbook and worksheet
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = f'{section.course.code} - {section.name} Attendance'
+
+    # Write section details
+    current_row = 1
+    worksheet[f'A{current_row}'] = 'Course Code:'
+    worksheet[f'B{current_row}'] = section.course.code
+    current_row += 1
+    worksheet[f'A{current_row}'] = 'Course Title:'
+    worksheet[f'B{current_row}'] = section.course.title
+    current_row += 1
+    worksheet[f'A{current_row}'] = 'Section Name:'
+    worksheet[f'B{current_row}'] = section.name
+    current_row += 1
+    worksheet[f'A{current_row}'] = 'Semester:'
+    worksheet[f'B{current_row}'] = f'{section.semester} {section.year}'
+    current_row += 1
+
+    # Add faculty information
+    worksheet[f'A{current_row}'] = 'Primary Faculty:'
+    worksheet[f'B{current_row}'] = section.primary_faculty.name if section.primary_faculty else 'N/A'
+    current_row += 1
+    if section.secondary_faculty:
+        worksheet[f'A{current_row}'] = 'Secondary Faculty:'
+        worksheet[f'B{current_row}'] = section.secondary_faculty.name
+        current_row += 1
+
+    # Merge cells for section details
+    last_col_letter = get_column_letter(len(headers)) # Get the column letter of the last header
+    for row_num in range(1, current_row):
+        worksheet.merge_cells(f'A{row_num}:A{row_num}') # Merge column A (label)
+        # Merge columns from B to the last header column for the value
+        worksheet.merge_cells(f'B{row_num}:{last_col_letter}{row_num}')
+
+    # Write headers
+    worksheet.append(headers)
+
+    # Apply bold font and left alignment to headers
+    header_font = Font(bold=True)
+    left_alignment = Alignment(horizontal='left')
+    for cell in worksheet[current_row]:
+        cell.font = header_font
+        cell.alignment = left_alignment
+
+    # Write data rows
+    data_start_row = current_row + 1
+    total_classes = section.total_classes or len(sessions) # Use saved total classes or actual session count
+
+    for enrollment in enrollments:
+        row_data = [enrollment.student.student_id, enrollment.student.name]
+        present_count = 0
+
+        for session in sessions:
+            is_present = attendance_map.get((enrollment.student.id, session.id), False)
+            row_data.append('P' if is_present else 'A') # 'P' for Present, 'A' for Absent
+            if is_present:
+                present_count += 1
+
+        row_data.append(present_count)
+        row_data.append(total_classes)
+
+        # Calculate percentage, handle division by zero
+        attendance_percentage = (present_count / total_classes) * 100 if total_classes > 0 else 0
+        row_data.append(str(f'{attendance_percentage:.2f}%')) # Explicitly convert to string
+
+        worksheet.append(row_data)
+        # Apply left alignment to all cells in the row
+        for cell in worksheet[worksheet.max_row]:
+            cell.alignment = left_alignment
+
+    # Auto-size columns (optional, can be slow for large tables)
+    for col in worksheet.columns:
+        max_length = 0
+        column = [cell for cell in col]
+        for cell in column:
+            try:
+                if cell.value is not None:
+                    # Convert cell value to string before checking length
+                    cell_value_str = str(cell.value)
+                    if len(cell_value_str) > max_length:
+                        max_length = len(cell_value_str)
+            except:
+                pass # Ignore errors, proceed to next cell
+        # Adjust the multiplier and added value as needed for better visual spacing
+        adjusted_width = (max_length + 2) * 1.2
+        # Apply a reasonable minimum width if needed
+        if adjusted_width > 50: # Prevent excessively wide columns
+            adjusted_width = 50
+        # Get the column letter from the first cell in the column
+        col_letter = get_column_letter(column[0].column)
+        worksheet.column_dimensions[col_letter].width = adjusted_width
+
+    # Create a response
+    excel_file = BytesIO()
+    workbook.save(excel_file)
+    excel_file.seek(0)
+
+    response = HttpResponse(
+        excel_file.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{section.course.code} - {section.name} - {section.semester} {section.year}.xlsx"'
+
+    return response
+
+@login_required
+@faculty_required
+def delete_all_attendance_view(request, section_id):
+    section = get_object_or_404(Section, id=section_id)
+
+    # Check if user is a faculty of this section or superuser
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        messages.error(request, 'You do not have permission to clear attendance for this section.')
+        return redirect('courses:section_detail', section_id=section.id)
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Delete all attendance records for this section
+                Attendance.objects.filter(session__section=section).delete()
+            messages.success(request, 'All attendance records have been cleared successfully.')
+        except Exception as e:
+            messages.error(request, f'Error clearing attendance: {str(e)}')
+
+    return redirect('courses:section_detail', section_id=section.id)
