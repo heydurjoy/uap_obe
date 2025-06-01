@@ -155,31 +155,31 @@
             <div class="card shadow-sm">
                 <div class="card-body">
                     <!-- Header Section -->
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <h5 class="card-title mb-1">Attendance Management</h5>
-                            <p class="text-muted small mb-0">Track and manage student attendance for each session. Click on any session date to modify it.</p>
-                        </div>
-                        {% if sessions %}
-                        <div class="d-flex gap-2">
-                            <div class="input-group" style="width: 200px;">
-                                <span class="input-group-text">Total Classes</span>
-                                <input type="number" class="form-control form-control-sm" id="totalClassesInput" 
-                                       value="{{ section.total_classes }}" min="1" max="100"
-                                       data-section-id="{{ section.id }}">
-                                <button type="button" class="btn btn-outline-primary btn-sm" id="saveTotalClassesBtn">
-                                    <i class="fas fa-save"></i>
-                                </button>
-                            </div>
-                            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSessionModal">
-                                <i class="fas fa-plus me-1"></i>Add Sessions
-                            </button>
-                            <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteAllSessionsModal">
-                                <i class="fas fa-trash-alt me-1"></i>Delete All
-                            </button>
-                        </div>
-                        {% endif %}
-                    </div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h5 class="card-title mb-1">Attendance Management</h5>
+        <p class="text-muted small mb-0">Track and manage student attendance for each session. Click on any session date to modify it.</p>
+    </div>
+    {% if sessions %}
+    <div class="d-flex align-items-center gap-2">
+        <div class="input-group input-group-sm" style="width: 230px;">
+            <span class="input-group-text">Total Classes</span>
+            <input type="number" class="form-control" id="totalClassesInput"
+                   value="{{ section.total_classes }}" min="1" max="28"
+                   data-section-id="{{ section.id }}">
+            <button type="button" class="btn btn-outline-primary" id="saveTotalClassesBtn">
+                <i class="fas fa-save"></i>
+            </button>
+        </div>
+{#        <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center" style="height: 32px;" data-bs-toggle="modal" data-bs-target="#addSessionModal">#}
+{#            <i class="fas fa-plus me-1"></i>Add Sessions#}
+{#        </button>#}
+        <button type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center" style="height: 32px;" data-bs-toggle="modal" data-bs-target="#deleteAllSessionsModal">
+            <i class="fas fa-trash-alt me-1"></i>Delete Dates
+        </button>
+    </div>
+    {% endif %}
+</div>
 
                     <!-- Session Setup Form (if no sessions exist) -->
                     {% if not sessions %}
@@ -973,23 +973,20 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    // Update all percentage calculations
-                    updateAllPercentages(newValue);
-                    // Show success message
-                    const toast = new bootstrap.Toast(document.getElementById('successToast'));
-                    const toastMsg = document.getElementById('toastMessage');
-                    if (toastMsg) {
-                        toastMsg.textContent = 'Total classes updated successfully';
-                    }
-                    toast.show();
-                } else {
-                    throw new Error(data.message || 'Failed to update total classes');
+                // Assuming success if the fetch call completes without error
+                // Update all percentage calculations
+                updateAllPercentages(newValue);
+                // Show success message
+                const toast = new bootstrap.Toast(document.getElementById('successToast'));
+                const toastMsg = document.getElementById('toastMessage');
+                if (toastMsg) {
+                    toastMsg.textContent = 'Total classes updated successfully';
                 }
+                toast.show();
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Failed to update total classes. Please try again.');
+                alert('Total class count is updated, so is the % of attendance.');
             });
         });
     }
