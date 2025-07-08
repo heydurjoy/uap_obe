@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ section.course.code }} - Section {{ section.name }} - Assessment Setup</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Assessment Status -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <strong>Total Marks:</strong> <span id="total-marks">0</span>/100
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAssessmentModal">
+                                <i class="fas fa-plus"></i> Add Assessment Item
+                            </button>
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addGroupModal">
+                                <i class="fas fa-layer-group"></i> Create Assessment Group
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Assessment Items List -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>CLO</th>
+                                    <th>Max Marks</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assessment-items">
+                                <!-- Assessment items will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Assessment Modal -->
+<div class="modal fade" id="addAssessmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Assessment Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addAssessmentForm">
+                    <div class="mb-3">
+                        <label for="assessmentName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="assessmentName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="assessmentType" class="form-label">Type</label>
+                        <select class="form-select" id="assessmentType" required>
+                            <option value="Assessment">Assessment</option>
+                            <option value="Midterm">Midterm</option>
+                            <option value="Final">Final</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="assessmentCLO" class="form-label">CLO</label>
+                        <select class="form-select" id="assessmentCLO" required>
+                            {% for clo in section.course.clos.all %}
+                            <option value="{{ clo.id }}">{{ clo.get_clo_code }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="maxMarks" class="form-label">Maximum Marks</label>
+                        <input type="number" class="form-control" id="maxMarks" min="0" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveAssessment">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Group Modal -->
+<div class="modal fade" id="addGroupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Assessment Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addGroupForm">
+                    <div class="mb-3">
+                        <label for="groupName" class="form-label">Group Name</label>
+                        <input type="text" class="form-control" id="groupName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="maxCount" class="form-label">Count Best</label>
+                        <select class="form-select" id="maxCount" required>
+                            <option value="1">Top 1</option>
+                            <option value="2">Top 2</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="groupCLO" class="form-label">CLO</label>
+                        <select class="form-select" id="groupCLO" required>
+                            {% for clo in section.course.clos.all %}
+                            <option value="{{ clo.id }}">{{ clo.get_clo_code }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveGroup">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // JavaScript for handling assessment setup will be added here
+</script>
+{% endblock %} 

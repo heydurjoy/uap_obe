@@ -12,7 +12,7 @@ DEPARTMENT_CHOICES = [
 class Department(models.Model):
     name = models.CharField(max_length=100)
     short_name = models.CharField(max_length=10, unique=True)
-    description = RichTextField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.short_name
@@ -27,7 +27,7 @@ class Program(models.Model):
         blank=True
     )
     department_name = models.CharField(max_length=100, blank=True, default='will be auto set')
-    description = RichTextField(null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         # If FK is set, keep the department name in the text field synced

@@ -7,11 +7,11 @@ from django.core.exceptions import ValidationError
 class Course(models.Model):
     code = models.CharField(max_length=20, unique=True)
     title = models.CharField(max_length=200)
-    program = models.ForeignKey(Program, on_delete=models.CASCADE)
-    credits = models.DecimalField(max_digits=3, decimal_places=1)
+    program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name='courses')
+    credits = models.PositiveIntegerField()
     description = models.TextField(blank=True, null=True)
     is_lab = models.BooleanField(default=False)
-    
+
     def __str__(self):
         return f"{self.code} - {self.title}"
 
@@ -97,46 +97,95 @@ class Enrollment(models.Model):
         return f'{self.student.name} in {self.section.course.code} Section {self.section.name}'
 
 class AssessmentTemplate(models.Model):
-    section = models.OneToOneField(Section, on_delete=models.CASCADE)
-    is_public = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    def __str__(self):
-        return f"Template for {self.section}"
-
-class AssessmentComponent(models.Model):
-    COMPONENT_TYPE_CHOICES = [
-        ('THEORY', 'Theory'),
-        ('LAB', 'Lab'),
-    ]
-    
-    template = models.ForeignKey(AssessmentTemplate, on_delete=models.CASCADE, related_name='components')
-    name = models.CharField(max_length=50)
-    component_type = models.CharField(max_length=10, choices=COMPONENT_TYPE_CHOICES)
-    weight = models.DecimalField(max_digits=5, decimal_places=2)
-    clo = models.ForeignKey(CLO, on_delete=models.CASCADE)
-    alternative_group = models.CharField(max_length=50, blank=True, null=True)
-    best_of_count = models.IntegerField(default=1)  # Number of best marks to consider
-    is_visible_to_students = models.BooleanField(default=True)
-    
-    class Meta:
-        unique_together = ['template', 'name']
-    
-    def __str__(self):
-        return f"{self.name} ({self.get_component_type_display()})"
-
-class AssessmentMark(models.Model):
-    component = models.ForeignKey(AssessmentComponent, on_delete=models.CASCADE)
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    mark = models.DecimalField(max_digits=5, decimal_places=2)
+    section = models.OneToOneField(Section, on_delete=models.CASCADE, related_name='assessment_template')
+    is_published = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        unique_together = ['component', 'student']
-    
+
     def __str__(self):
-        return f"{self.student.student_id} - {self.component.name}: {self.mark}"
+        return f"Assessment Template - {self.section.course.code} Section {self.section.name}"
+
+    def get_total_marks(self):
+        """Calculate total marks from all assessment items"""
+        total = 0
+        # Add marks from individual items
+        total += self.assessment_items.filter(group__isnull=True).aggregate(
+            total=models.Sum('max_marks'))['total'] or 0
+        
+        # Add marks from groups
+        for group in self.assessment_groups.all():
+            total += group.get_total_marks()
+        
+        return total
+
+class AssessmentItemGroup(models.Model):
+    MAX_COUNT_CHOICES = [
+        (1, 'Top 1'),
+        (2, 'Top 2'),
+    ]
+    
+    template = models.ForeignKey(AssessmentTemplate, on_delete=models.CASCADE, related_name='assessment_groups')
+    name = models.CharField(max_length=100)
+    max_count = models.IntegerField(choices=MAX_COUNT_CHOICES, default=1)
+    clo = models.ForeignKey(CLO, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.template.section.course.code} Section {self.template.section.name}"
+
+    def get_total_marks(self):
+        """Calculate total marks for the group based on max_count"""
+        items = self.assessment_items.all().order_by('-max_marks')
+        total = 0
+        for i in range(min(self.max_count, len(items))):
+            total += items[i].max_marks
+        return total
+
+class AssessmentItem(models.Model):
+    ASSESSMENT_TYPES = [
+        ('Assessment', 'Assessment'),
+        ('Midterm', 'Midterm'),
+        ('Final', 'Final'),
+    ]
+    
+    template = models.ForeignKey(AssessmentTemplate, on_delete=models.CASCADE, related_name='assessment_items')
+    group = models.ForeignKey(AssessmentItemGroup, on_delete=models.CASCADE, null=True, blank=True, related_name='assessment_items')
+    name = models.CharField(max_length=100)
+    assessment_type = models.CharField(max_length=20, choices=ASSESSMENT_TYPES)
+    clo = models.ForeignKey(CLO, on_delete=models.CASCADE)
+    max_marks = models.DecimalField(max_digits=5, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.template.section.course.code} Section {self.template.section.name}"
+
+    def save(self, *args, **kwargs):
+        # Ensure CLO matches group CLO if item is in a group
+        if self.group and self.clo != self.group.clo:
+            self.clo = self.group.clo
+        super().save(*args, **kwargs)
+
+class AssessmentMark(models.Model):
+    assessment_item = models.ForeignKey(AssessmentItem, on_delete=models.CASCADE, related_name='marks')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='assessment_marks')
+    marks = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['assessment_item', 'student']
+
+    def __str__(self):
+        return f"{self.student.name} - {self.assessment_item.name}"
+
+    def save(self, *args, **kwargs):
+        # Validate marks are within range
+        if self.marks is not None:
+            if self.marks < 0 or self.marks > self.assessment_item.max_marks:
+                raise ValidationError(f'Marks must be between 0 and {self.assessment_item.max_marks}')
+        super().save(*args, **kwargs)
 
 class Attainment(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)

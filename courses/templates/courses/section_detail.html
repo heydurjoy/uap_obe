@@ -1,0 +1,20 @@
+                    <li class="nav-item">
+                        <a class="nav-link" id="attendance-tab" data-bs-toggle="tab" href="#attendance" role="tab">
+                            <i class="fas fa-calendar-check"></i> Attendance
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="assessment-tab" data-bs-toggle="tab" href="#assessment" role="tab">
+                            <i class="fas fa-tasks"></i> Assessment
+                        </a>
+                    </li>
+
+                <!-- Assessment Tab -->
+                <div class="tab-pane fade" id="assessment" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4>Assessment Setup</h4>
+                        <a href="{% url 'courses:assessment_setup' section.id %}" class="btn btn-primary py-2">
+                            <i class="fas fa-tasks me-2"></i>Assessment Setup
+                        </a>
+                    </div>
+                </div> 

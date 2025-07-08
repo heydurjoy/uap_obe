@@ -64,4 +64,7 @@ urlpatterns = [
     # Attendance URLs
     path('sections/<int:section_id>/attendance/', views.get_attendance, name='get_attendance'),
     path('sections/<int:section_id>/attendance/save/', views.save_attendance, name='save_attendance'),
+    
+    # Assessment setup URL
+    path('sections/<int:section_id>/assessment-setup/', views.assessment_setup_view, name='assessment_setup'),
 ] 

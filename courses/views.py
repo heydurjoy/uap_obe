@@ -6,7 +6,7 @@ from django.db.models import Sum, Avg, F, Q
 from django.core.exceptions import PermissionDenied
 from .models import (
     Course, CLO, Section, Student, Enrollment,
-    AssessmentTemplate, AssessmentComponent, AssessmentMark, Attainment,
+    AssessmentTemplate, AssessmentItem, AssessmentItemGroup, AssessmentMark, Attainment,
     ProjectGroup, Session, Attendance
 )
 from accounts.models import Faculty, Holiday
@@ -33,7 +33,7 @@ def course_list(request):
         courses = Course.objects.all()
     else:
         faculty = get_object_or_404(Faculty, user=request.user)
-        courses = Course.objects.filter(section__teacher=faculty).distinct()
+        courses = Course.objects.filter(sections__faculties=faculty).distinct()
     
     return render(request, 'courses/course_list.html', {'courses': courses})
 
@@ -469,7 +469,15 @@ def course_create(request):
             return redirect('courses:course_list')
     else:
         form = CourseForm()
-    return render(request, 'courses/course_form.html', {'form': form})
+    
+    # Get all courses for the list view
+    courses = Course.objects.select_related('program').all().order_by('code')
+    
+    return render(request, 'courses/course_form.html', {
+        'form': form,
+        'courses': courses,
+        'title': 'Create Course'
+    })
 
 @login_required
 @faculty_required
@@ -484,7 +492,15 @@ def course_update(request, pk):
             return redirect('courses:course_list')
     else:
         form = CourseForm(instance=course)
-    return render(request, 'courses/course_form.html', {'form': form})
+    
+    # Get all courses for the list view
+    courses = Course.objects.select_related('program').all().order_by('code')
+    
+    return render(request, 'courses/course_form.html', {
+        'form': form,
+        'courses': courses,
+        'title': f'Edit Course - {course.code}'
+    })
 
 @login_required
 @faculty_required
@@ -1428,21 +1444,16 @@ def export_attendance_excel_view(request, section_id):
 
 @login_required
 @faculty_required
-def delete_all_attendance_view(request, section_id):
+def assessment_setup_view(request, section_id):
     section = get_object_or_404(Section, id=section_id)
-
-    # Check if user is a faculty of this section or superuser
+    
+    # Check if user has permission for this section
     if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
-        messages.error(request, 'You do not have permission to clear attendance for this section.')
+        messages.error(request, 'You do not have permission to access assessment setup for this section.')
         return redirect('courses:section_detail', section_id=section.id)
-
-    if request.method == 'POST':
-        try:
-            with transaction.atomic():
-                # Delete all attendance records for this section
-                Attendance.objects.filter(session__section=section).delete()
-            messages.success(request, 'All attendance records have been cleared successfully.')
-        except Exception as e:
-            messages.error(request, f'Error clearing attendance: {str(e)}')
-
-    return redirect('courses:section_detail', section_id=section.id)
+    
+    context = {
+        'section': section,
+        'title': f'Assessment Setup - {section.course.code} Section {section.name}'
+    }
+    return render(request, 'courses/assessment_setup.html', context)
