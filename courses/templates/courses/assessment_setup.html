@@ -38,11 +38,32 @@
                                     <th>Type</th>
                                     <th>CLO</th>
                                     <th>Max Marks</th>
-                                    <th>Actions</th>
+                                    <th class="text-center align-middle">In Group</th>
+                                    <th class="text-center align-middle">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="assessment-items">
-                                <!-- Assessment items will be loaded here -->
+                                {% for item in assessment_items_qs %}
+                                <tr>
+                                    <td>{{ item.name }}</td>
+                                    <td>{{ item.assessment_type }}</td>
+                                    <td>{{ item.clo.get_clo_code }}</td>
+                                    <td>{{ item.max_marks }}</td>
+                                    <td class="text-center align-middle">
+                                        {% if item.in_group %}
+                                            <span class="badge bg-success">Yes</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">No</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <button class="btn btn-sm btn-primary me-1" data-item-id="{{ item.id }}" type="button">Edit</button>
+                                        <button class="btn btn-sm btn-danger" data-item-id="{{ item.id }}" type="button">Delete</button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="6" class="text-center text-muted">No assessment items yet.</td></tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
@@ -52,6 +73,108 @@
     </div>
 </div>
 
+<!-- Assessment Groups Table -->
+<div class="mt-5">
+    <h5>Assessment Groups</h5>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Group Name</th>
+                <th>Count Best</th>
+                <th>CLO</th>
+                <th>Items</th>
+                <th class="text-center align-middle">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for group in groups %}
+            <tr>
+                <td><strong>{{ group.name }}</strong> <span class="badge bg-info">Alternative Marks</span></td>
+                <td>Top {{ group.max_count }}</td>
+                <td>{{ group.clo.get_clo_code }}</td>
+                <td>
+                    <ul class="mb-0">
+                        {% for item in group.assessment_items.all %}
+                        <li>{{ item.name }} ({{ item.max_marks }})</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td class="text-center align-middle">
+                    <button class="btn btn-sm btn-primary me-1 edit-group-btn" data-group-id="{{ group.id }}" type="button">Edit</button>
+                    <button class="btn btn-sm btn-danger delete-group-btn" data-group-id="{{ group.id }}" type="button">Delete</button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted">No assessment groups.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+    <div class="mt-5">
+    <h5>CLO-wise Total Marks</h5>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>CLO Code</th>
+                <th>Total Marks</th>
+                <th>Mapped PLO(s)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for clo, marks in clo_marks.items %}
+            <tr>
+                <td>{{ clo.get_clo_code }}</td>
+                <td>{{ marks|floatformat:2 }}</td>
+                <td>
+                    {% if clo.plo %}
+                        {{ clo.plo.numberic_sl }} - {{ clo.plo.description }}
+                    {% else %}
+                        <span class="text-muted">None</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center text-muted">No CLOs found.</td></tr>
+            {% endfor %}
+            {% if clo_marks %}
+            <tr class="table-secondary fw-bold">
+                <td>Total</td>
+                <td colspan="2">{{ clo_total|floatformat:2 }}</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- PLO-wise Marks Table -->
+<div class="mt-4">
+    <h5>PLO-wise Total Marks</h5>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>PLO Code</th>
+                <th>Total Marks</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for plo, marks in plo_marks.items %}
+            <tr>
+                <td>{{ plo.numberic_sl }} - {{ plo.description }}</td>
+                <td>{{ marks|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-center text-muted">No PLOs found.</td></tr>
+            {% endfor %}
+            {% if plo_marks %}
+            <tr class="table-secondary fw-bold">
+                <td>Total</td>
+                <td>{{ plo_total|floatformat:2 }}</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
 <!-- Add Assessment Modal -->
 <div class="modal fade" id="addAssessmentModal" tabindex="-1">
     <div class="modal-dialog">
@@ -113,8 +236,9 @@
                     <div class="mb-3">
                         <label for="maxCount" class="form-label">Count Best</label>
                         <select class="form-select" id="maxCount" required>
-                            <option value="1">Top 1</option>
-                            <option value="2">Top 2</option>
+                            {% for val, label in MAX_COUNT_CHOICES %}
+                            <option value="{{ val }}">{{ label }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
@@ -125,6 +249,12 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Select Assessment Items (Assessment only)</label>
+                        <div id="groupAssessmentItems">
+                            <!-- JS will populate eligible items here -->
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -134,10 +264,507 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Assessment Modal -->
+<div class="modal fade" id="editAssessmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Assessment Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editAssessmentForm">
+                    <input type="hidden" id="editAssessmentId">
+                    <div class="mb-3">
+                        <label for="editAssessmentName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="editAssessmentName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAssessmentType" class="form-label">Type</label>
+                        <select class="form-select" id="editAssessmentType" required>
+                            <option value="Assessment">Assessment</option>
+                            <option value="Midterm">Midterm</option>
+                            <option value="Final">Final</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAssessmentCLO" class="form-label">CLO</label>
+                        <select class="form-select" id="editAssessmentCLO" required>
+                            {% for clo in section.course.clos.all %}
+                            <option value="{{ clo.id }}">{{ clo.get_clo_code }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editMaxMarks" class="form-label">Maximum Marks</label>
+                        <input type="number" class="form-control" id="editMaxMarks" min="0" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="updateAssessment">Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Group Modal -->
+<div class="modal fade" id="editGroupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Assessment Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editGroupForm">
+                    <input type="hidden" id="editGroupId">
+                    <div class="mb-3">
+                        <label for="editGroupName" class="form-label">Group Name</label>
+                        <input type="text" class="form-control" id="editGroupName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editMaxCount" class="form-label">Count Best</label>
+                        <select class="form-select" id="editMaxCount" required>
+                            {% for val, label in MAX_COUNT_CHOICES %}
+                            <option value="{{ val }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editGroupCLO" class="form-label">CLO</label>
+                        <select class="form-select" id="editGroupCLO" required>
+                            {% for clo in section.course.clos.all %}
+                            <option value="{{ clo.id }}">{{ clo.get_clo_code }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Select Assessment Items (Assessment only)</label>
+                        <div id="editGroupAssessmentItems">
+                            <!-- JS will populate eligible items here -->
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="updateGroup">Update</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
+{{ assessment_items|json_script:'assessment-items-data' }}
+{{ section.id|json_script:"section-id" }}
+{{ groups_data|json_script:'groups-data' }}
 <script>
-    // JavaScript for handling assessment setup will be added here
+    document.addEventListener('DOMContentLoaded', function() {
+        // Function to update total marks
+        function updateTotalMarks() {
+            let total = 0;
+            const groupsData = JSON.parse(document.getElementById('groups-data').textContent);
+            const assessmentItemsData = JSON.parse(document.getElementById('assessment-items-data').textContent);
+            const groupedItemIds = new Set();
+            console.log('--- Total Marks Calculation ---');
+            // For each group: average of all items * max_count
+            groupsData.forEach(function(group) {
+                const items = group.items;
+                if (items.length > 0) {
+                    let sum = 0;
+                    items.forEach(function(item) {
+                        sum += item.max_marks;
+                        groupedItemIds.add(Number(item.id));
+                    });
+                    const avg = sum / items.length;
+                    const groupTotal = avg * group.max_count;
+                    total += groupTotal;
+                    console.log(`Group: ${group.name} | Items: [${items.map(i => i.name + ' (' + i.max_marks + ')').join(', ')}] | Avg: ${avg} | Count Best: ${group.max_count} | Group Total: ${groupTotal}`);
+                }
+            });
+            // Count ungrouped items
+            let ungroupedTotal = 0;
+            let ungroupedNames = [];
+            assessmentItemsData.forEach(function(item) {
+                if (!groupedItemIds.has(Number(item.id))) {
+                    total += item.max_marks;
+                    ungroupedTotal += item.max_marks;
+                    ungroupedNames.push(item.name + ' (' + item.max_marks + ')');
+                }
+            });
+            console.log(`Ungrouped Items: [${ungroupedNames.join(', ')}] | Ungrouped Total: ${ungroupedTotal}`);
+            console.log('Total Marks:', total);
+            document.getElementById('total-marks').textContent = total;
+        }
+        updateTotalMarks();
+
+        const saveBtn = document.getElementById('saveAssessment');
+        const form = document.getElementById('addAssessmentForm');
+        const modal = document.getElementById('addAssessmentModal');
+        const sectionId = JSON.parse(document.getElementById('section-id').textContent);
+        saveBtn.addEventListener('click', function() {
+            const name = document.getElementById('assessmentName').value;
+            const assessment_type = document.getElementById('assessmentType').value;
+            const clo_id = document.getElementById('assessmentCLO').value;
+            const max_marks = document.getElementById('maxMarks').value;
+            fetch(`/courses/sections/${sectionId}/add-assessment-item/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    name: name,
+                    assessment_type: assessment_type,
+                    clo_id: clo_id,
+                    max_marks: max_marks
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    form.reset();
+                    var modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Failed to add assessment item.');
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            });
+        });
+
+        // Handle delete button
+        document.querySelectorAll('.btn-danger[data-item-id]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-item-id');
+                if (confirm('Are you sure you want to delete this assessment item?')) {
+                    fetch(`/courses/sections/${sectionId}/delete-assessment-item/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken'),
+                        },
+                        body: JSON.stringify({ item_id: itemId })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert(data.message || 'Failed to delete assessment item.');
+                        }
+                    })
+                    .catch(error => {
+                        alert('Error: ' + error);
+                    });
+                }
+            });
+        });
+
+        // Handle edit button
+        document.querySelectorAll('.btn-primary[data-item-id]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const row = btn.closest('tr');
+                const itemId = btn.getAttribute('data-item-id');
+                const name = row.children[0].textContent.trim();
+                const assessmentType = row.children[1].textContent.trim();
+                const maxMarks = row.children[3].textContent.trim();
+                // Find the item in assessmentItemsData
+                const itemData = assessmentItemsData.find(i => i.id == itemId);
+                document.getElementById('editAssessmentId').value = itemId;
+                document.getElementById('editAssessmentName').value = name;
+                document.getElementById('editAssessmentType').value = assessmentType;
+                document.getElementById('editAssessmentCLO').value = itemData ? itemData.clo_id : '';
+                document.getElementById('editMaxMarks').value = maxMarks;
+                // Show modal
+                var editModal = new bootstrap.Modal(document.getElementById('editAssessmentModal'));
+                editModal.show();
+            });
+        });
+        // Handle update button
+        document.getElementById('updateAssessment').addEventListener('click', function() {
+            const itemId = document.getElementById('editAssessmentId').value;
+            const name = document.getElementById('editAssessmentName').value;
+            const assessment_type = document.getElementById('editAssessmentType').value;
+            const clo_id = document.getElementById('editAssessmentCLO').value;
+            const max_marks = document.getElementById('editMaxMarks').value;
+            // Find the item in assessmentItemsData
+            const itemData = assessmentItemsData.find(i => i.id == itemId);
+            let update_group = false;
+            console.log('Edit itemData:', itemData);
+            if (itemData && itemData.group !== null && itemData.group !== undefined && itemData.group !== 0 && parseFloat(max_marks) !== itemData.max_marks) {
+                if (!confirm('This item is part of a group. Changing its marks will update all items in the group. Continue?')) {
+                    return;
+                }
+                update_group = true;
+            }
+            fetch(`/courses/sections/${sectionId}/edit-assessment-item/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    name: name,
+                    assessment_type: assessment_type,
+                    clo_id: clo_id,
+                    max_marks: max_marks,
+                    update_group: update_group
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    var editModal = bootstrap.Modal.getInstance(document.getElementById('editAssessmentModal'));
+                    editModal.hide();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Failed to update assessment item.');
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            });
+        });
+
+        // Prepare assessment items data for group modal
+        const assessmentItemsData = JSON.parse(document.getElementById('assessment-items-data').textContent);
+        // Populate groupAssessmentItems when modal is shown
+        const addGroupModal = document.getElementById('addGroupModal');
+        addGroupModal.addEventListener('show.bs.modal', function() {
+            const container = document.getElementById('groupAssessmentItems');
+            container.innerHTML = '';
+            console.log('assessmentItemsData for group modal:', assessmentItemsData);
+            assessmentItemsData.forEach(function(item) {
+                if (item.assessment_type === 'Assessment' && !item.in_group) {
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = item.id;
+                    checkbox.id = 'group-item-' + item.id;
+                    checkbox.className = 'form-check-input me-2';
+                    const label = document.createElement('label');
+                    label.htmlFor = checkbox.id;
+                    label.className = 'form-check-label me-3';
+                    label.textContent = item.name + ' (Marks: ' + item.max_marks + ')';
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'form-check form-check-inline';
+                    wrapper.appendChild(checkbox);
+                    wrapper.appendChild(label);
+                    container.appendChild(wrapper);
+                }
+            });
+        });
+        // Handle saveGroup button
+        document.getElementById('saveGroup').addEventListener('click', function() {
+            const name = document.getElementById('groupName').value;
+            const max_count = document.getElementById('maxCount').value;
+            const clo_id = document.getElementById('groupCLO').value;
+            // Get selected items
+            const selected = Array.from(document.querySelectorAll('#groupAssessmentItems input[type=checkbox]:checked')).map(cb => parseInt(cb.value));
+            if (selected.length === 0) {
+                alert('Please select at least one assessment item.');
+                return;
+            }
+            // All selected items must have the same marks and CLO
+            const selectedItems = assessmentItemsData.filter(item => selected.includes(item.id));
+            const firstMarks = selectedItems[0].max_marks;
+            const firstClo = selectedItems[0].clo_id;
+            if (!selectedItems.every(item => item.max_marks === firstMarks && item.clo_id === parseInt(clo_id))) {
+                alert('All selected items must have the same marks and match the selected CLO.');
+                return;
+            }
+            fetch(`/courses/sections/${sectionId}/add-assessment-group/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    name: name,
+                    max_count: max_count,
+                    clo_id: clo_id,
+                    max_marks: firstMarks,
+                    item_ids: selected
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    var groupModal = bootstrap.Modal.getInstance(addGroupModal);
+                    groupModal.hide();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Failed to create assessment group.');
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            });
+        });
+
+        // Handle edit group button
+        document.querySelectorAll('.edit-group-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const groupId = this.getAttribute('data-group-id');
+                const groupData = JSON.parse(document.getElementById('groups-data').textContent).find(g => g.id == groupId);
+                if (groupData) {
+                    document.getElementById('editGroupId').value = groupId;
+                    document.getElementById('editGroupName').value = groupData.name;
+                    document.getElementById('editMaxCount').value = groupData.max_count;
+                    // Set CLO by matching clo_id
+                    const cloSelect = document.getElementById('editGroupCLO');
+                    let groupFirstItem = groupData.items[0];
+                    let groupFirstAssessmentItem = groupFirstItem ? assessmentItemsData.find(item => item.id === groupFirstItem.id) : null;
+                    if (groupFirstAssessmentItem) {
+                        for (let i = 0; i < cloSelect.options.length; i++) {
+                            if (parseInt(cloSelect.options[i].value) === groupFirstAssessmentItem.clo_id) {
+                                cloSelect.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    // Populate items for the edit modal
+                    const container = document.getElementById('editGroupAssessmentItems');
+                    container.innerHTML = '';
+                    assessmentItemsData.forEach(function(item) {
+                        if (item.assessment_type === 'Assessment') {
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.value = item.id;
+                            checkbox.id = 'edit-group-item-' + item.id;
+                            checkbox.className = 'form-check-input me-2';
+                            const label = document.createElement('label');
+                            label.htmlFor = checkbox.id;
+                            label.className = 'form-check-label me-3';
+                            label.textContent = item.name + ' (Marks: ' + item.max_marks + ')';
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'form-check form-check-inline';
+                            wrapper.appendChild(checkbox);
+                            wrapper.appendChild(label);
+                            container.appendChild(wrapper);
+                        }
+                    });
+                    var editGroupModal = new bootstrap.Modal(document.getElementById('editGroupModal'));
+                    editGroupModal.show();
+                }
+            });
+        });
+
+        // Handle update group button
+        document.getElementById('updateGroup').addEventListener('click', function() {
+            const groupId = document.getElementById('editGroupId').value;
+            const name = document.getElementById('editGroupName').value;
+            const max_count = document.getElementById('editMaxCount').value;
+            const clo_id = document.getElementById('editGroupCLO').value;
+            // Get selected items
+            const selected = Array.from(document.querySelectorAll('#editGroupAssessmentItems input[type=checkbox]:checked')).map(cb => parseInt(cb.value));
+            if (selected.length === 0) {
+                alert('Please select at least one assessment item for the group.');
+                return;
+            }
+            // All selected items must have the same marks and CLO
+            const selectedItems = assessmentItemsData.filter(item => selected.includes(item.id));
+            const firstMarks = selectedItems[0].max_marks;
+            const firstClo = selectedItems[0].clo_id;
+            if (!selectedItems.every(item => item.max_marks === firstMarks && item.clo_id === parseInt(clo_id))) {
+                alert('All selected items must have the same marks and match the selected CLO.');
+                return;
+            }
+            fetch(`/courses/sections/${sectionId}/edit-assessment-group/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    group_id: groupId,
+                    name: name,
+                    max_count: max_count,
+                    clo_id: clo_id,
+                    max_marks: firstMarks,
+                    item_ids: selected
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    var editGroupModal = bootstrap.Modal.getInstance(document.getElementById('editGroupModal'));
+                    editGroupModal.hide();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Failed to update assessment group.');
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            });
+        });
+
+        // Handle delete group button
+        document.querySelectorAll('.delete-group-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const groupId = this.getAttribute('data-group-id');
+                if (confirm('Are you sure you want to delete this assessment group?')) {
+                    fetch(`/courses/sections/${sectionId}/delete-assessment-group/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken'),
+                        },
+                        body: JSON.stringify({ group_id: groupId })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert(data.message || 'Failed to delete assessment group.');
+                        }
+                    })
+                    .catch(error => {
+                        alert('Error: ' + error);
+                    });
+                }
+            });
+        });
+
+        // Limit group item selection to 10 in create and edit modals
+        function enforceGroupItemLimit(containerId) {
+            const container = document.getElementById(containerId);
+            container.addEventListener('change', function(e) {
+                const checked = container.querySelectorAll('input[type=checkbox]:checked');
+                if (checked.length > 10) {
+                    e.target.checked = false;
+                    alert('A group can contain at most 10 items.');
+                }
+            });
+        }
+        enforceGroupItemLimit('groupAssessmentItems');
+        enforceGroupItemLimit('editGroupAssessmentItems');
+
+        // Helper to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    });
 </script>
 {% endblock %} 

@@ -61,9 +61,19 @@ class CourseAdmin(admin.ModelAdmin):
 
 @admin.register(CLO)
 class CLOAdmin(admin.ModelAdmin):
-    list_display = ('get_clo_code', 'course', 'sl', 'description')
+    list_display = ('get_clo_code', 'description', 'get_plo_info', 'get_course_code')
     list_filter = ('course',)
     search_fields = ('description', 'course__code')
+
+    def get_plo_info(self, obj):
+        if obj.plo:
+            return f"PO{obj.plo.numberic_sl} - {obj.plo.description}"
+        return "Not Mapped"
+    get_plo_info.short_description = 'Mapped PLO'
+
+    def get_course_code(self, obj):
+        return obj.course.code
+    get_course_code.short_description = 'Course Code'
 
 @admin.register(Section)
 class SectionAdmin(admin.ModelAdmin):

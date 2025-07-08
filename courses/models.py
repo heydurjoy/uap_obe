@@ -30,12 +30,11 @@ class CLO(models.Model):
         return f"{self.course.code} CLO {self.sl}{plo_str}"
 
     def get_clo_code(self):
-        return f"{self.course.code}-CLO{self.sl}"
+        return f"CLO{self.sl}"
 
 class Section(models.Model):
     SEMESTER_CHOICES = [
         ('Spring', 'Spring'),
-        ('Summer', 'Summer'),
         ('Fall', 'Fall')
     ]
     
@@ -122,6 +121,14 @@ class AssessmentItemGroup(models.Model):
     MAX_COUNT_CHOICES = [
         (1, 'Top 1'),
         (2, 'Top 2'),
+        (3, 'Top 3'),
+        (4, 'Top 4'),
+        (5, 'Top 5'),
+        (6, 'Top 6'),
+        (7, 'Top 7'),
+        (8, 'Top 8'),
+        (9, 'Top 9'),
+        (10, 'Top 10'),
     ]
     
     template = models.ForeignKey(AssessmentTemplate, on_delete=models.CASCADE, related_name='assessment_groups')
@@ -130,6 +137,25 @@ class AssessmentItemGroup(models.Model):
     clo = models.ForeignKey(CLO, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    item1 = models.ForeignKey('AssessmentItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='group_item1')
+    item2 = models.ForeignKey('AssessmentItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='group_item2')
+    item3 = models.ForeignKey('AssessmentItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='group_item3')
+    item4 = models.ForeignKey('AssessmentItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='group_item4')
+    item5 = models.ForeignKey('AssessmentItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='group_item5')
+    item6 = models.ForeignKey('AssessmentItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='group_item6')
+    item7 = models.ForeignKey('AssessmentItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='group_item7')
+    item8 = models.ForeignKey('AssessmentItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='group_item8')
+    item9 = models.ForeignKey('AssessmentItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='group_item9')
+    item10 = models.ForeignKey('AssessmentItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='group_item10')
+    totalmarks = models.FloatField(default=0)
+
+    def clean(self):
+        if self.pk and self.assessment_items.count() > 10:
+            raise ValidationError('A group can contain at most 10 items.')
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name} - {self.template.section.course.code} Section {self.template.section.name}"
@@ -157,6 +183,7 @@ class AssessmentItem(models.Model):
     max_marks = models.DecimalField(max_digits=5, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    in_group = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.name} - {self.template.section.course.code} Section {self.template.section.name}"

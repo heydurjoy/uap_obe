@@ -19,12 +19,14 @@ from django.db import IntegrityError
 from django import forms
 from datetime import datetime, timedelta
 import json
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 from django.http import HttpResponse
 from io import BytesIO
 from openpyxl.utils.cell import get_column_letter
+from .models import AssessmentItemGroup
+MAX_COUNT_CHOICES = AssessmentItemGroup.MAX_COUNT_CHOICES[:9]  # Only up to Top 9
 
 @login_required
 @faculty_required
@@ -1452,8 +1454,269 @@ def assessment_setup_view(request, section_id):
         messages.error(request, 'You do not have permission to access assessment setup for this section.')
         return redirect('courses:section_detail', section_id=section.id)
     
+    # Get or create assessment template
+    template, _ = AssessmentTemplate.objects.get_or_create(section=section)
+    assessment_items_qs = template.assessment_items.select_related('clo').all().order_by('id')
+    assessment_items = [
+        {
+            'id': item.id,
+            'name': item.name,
+            'assessment_type': item.assessment_type,
+            'clo_id': item.clo.id,
+            'clo_code': item.clo.get_clo_code(),
+            'max_marks': float(item.max_marks),
+            'in_group': item.in_group,
+            'group': item.group.id if item.group else None,
+        }
+        for item in assessment_items_qs
+    ]
+    ungrouped_items = template.assessment_items.select_related('clo').filter(group__isnull=True).order_by('id')
+    groups = template.assessment_groups.select_related('clo').prefetch_related('assessment_items').all().order_by('id')
+    groups_data = [
+        {
+            'id': group.id,
+            'name': group.name,
+            'max_count': group.max_count,
+            'clo_code': group.clo.get_clo_code(),
+            'items': [
+                {
+                    'id': item.id,
+                    'name': item.name,
+                    'max_marks': float(item.max_marks),
+                }
+                for item in group.assessment_items.all()
+            ]
+        }
+        for group in groups
+    ]
+    # Calculate total marks per CLO
+    clo_marks = {}
+    for clo in section.course.clos.all():
+        # Ungrouped items for this CLO
+        ungrouped = [item for item in assessment_items_qs if item.clo_id == clo.id and not item.in_group]
+        # Group contributions for this CLO
+        group_total = 0
+        group_has_items = False
+        for group in groups:
+            if group.clo_id == clo.id:
+                group_items = list(group.assessment_items.all())
+                if group_items:
+                    group_has_items = True
+                    avg = sum(float(i.max_marks) for i in group_items) / len(group_items)
+                    group_total += avg * group.max_count
+        ungrouped_total = sum(float(item.max_marks) for item in ungrouped)
+        # Only include CLOs that have at least one item (grouped or ungrouped)
+        if ungrouped or group_has_items:
+            clo_marks[clo] = ungrouped_total + group_total
+
+    # Calculate total marks per PLO
+    plo_marks = {}
+    for clo, marks in clo_marks.items():
+        if clo.plo:
+            plo_marks.setdefault(clo.plo, 0)
+            plo_marks[clo.plo] += marks
+
+    clo_total = sum(clo_marks.values()) if clo_marks else 0
+    plo_total = sum(plo_marks.values()) if plo_marks else 0
     context = {
         'section': section,
+        'assessment_items': assessment_items,
+        'assessment_items_qs': assessment_items_qs,
+        'ungrouped_items': ungrouped_items,
+        'groups': groups,
+        'groups_data': groups_data,
+        'MAX_COUNT_CHOICES': MAX_COUNT_CHOICES,
+        'clo_marks': clo_marks,
+        'plo_marks': plo_marks,
+        'clo_total': clo_total,
+        'plo_total': plo_total,
         'title': f'Assessment Setup - {section.course.code} Section {section.name}'
     }
     return render(request, 'courses/assessment_setup.html', context)
+
+@login_required
+@faculty_required
+@require_POST
+def add_assessment_item_view(request, section_id):
+    import json
+    section = get_object_or_404(Section, id=section_id)
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    try:
+        data = json.loads(request.body)
+        name = data.get('name')
+        assessment_type = data.get('assessment_type')
+        clo_id = data.get('clo_id')
+        max_marks = data.get('max_marks')
+        if not all([name, assessment_type, clo_id, max_marks]):
+            return JsonResponse({'success': False, 'message': 'Missing required fields'}, status=400)
+        # Get or create assessment template for this section
+        template, _ = AssessmentTemplate.objects.get_or_create(section=section)
+        clo = get_object_or_404(CLO, id=clo_id, course=section.course)
+        item = AssessmentItem.objects.create(
+            template=template,
+            name=name,
+            assessment_type=assessment_type,
+            clo=clo,
+            max_marks=max_marks
+        )
+        return JsonResponse({'success': True, 'item_id': item.id})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@faculty_required
+@require_POST
+def delete_assessment_item_view(request, section_id):
+    import json
+    section = get_object_or_404(Section, id=section_id)
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    try:
+        data = json.loads(request.body)
+        item_id = data.get('item_id')
+        if not item_id:
+            return JsonResponse({'success': False, 'message': 'Missing assessment item ID'}, status=400)
+        item = get_object_or_404(AssessmentItem, id=item_id, template__section=section)
+        item.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@faculty_required
+@require_POST
+def edit_assessment_item_view(request, section_id):
+    import json
+    section = get_object_or_404(Section, id=section_id)
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    try:
+        data = json.loads(request.body)
+        item_id = data.get('item_id')
+        name = data.get('name')
+        assessment_type = data.get('assessment_type')
+        clo_id = data.get('clo_id')
+        max_marks = data.get('max_marks')
+        if not all([item_id, name, assessment_type, clo_id, max_marks]):
+            return JsonResponse({'success': False, 'message': 'Missing required fields'}, status=400)
+        item = get_object_or_404(AssessmentItem, id=item_id, template__section=section)
+        clo = get_object_or_404(CLO, id=clo_id, course=section.course)
+        update_group = data.get('update_group', False)
+        if item.group and update_group:
+            # Update all items in the group
+            AssessmentItem.objects.filter(group=item.group).update(max_marks=max_marks)
+        else:
+            item.max_marks = max_marks
+            item.clo = clo # Ensure the CLO is updated
+            item.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@faculty_required
+@require_POST
+def add_assessment_group_view(request, section_id):
+    import json
+    section = get_object_or_404(Section, id=section_id)
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    try:
+        data = json.loads(request.body)
+        name = data.get('name')
+        max_count = int(data.get('max_count'))
+        clo_id = data.get('clo_id')
+        max_marks = float(data.get('max_marks'))
+        item_ids = data.get('item_ids', [])
+        if not all([name, max_count, clo_id, max_marks, item_ids]):
+            return JsonResponse({'success': False, 'message': 'Missing required fields'}, status=400)
+        template, _ = AssessmentTemplate.objects.get_or_create(section=section)
+        clo = get_object_or_404(CLO, id=clo_id, course=section.course)
+        # Fetch items and validate
+        items = AssessmentItem.objects.filter(id__in=item_ids, template=template)
+        if items.count() != len(item_ids):
+            return JsonResponse({'success': False, 'message': 'Some assessment items not found.'}, status=400)
+        for item in items:
+            if item.max_marks != max_marks or item.clo_id != clo.id:
+                return JsonResponse({'success': False, 'message': 'All items must have the same marks and CLO as the group.'}, status=400)
+        if len(item_ids) > 10:
+            return JsonResponse({'success': False, 'message': 'A group can contain at most 10 items.'}, status=400)
+        # Create group
+        group = AssessmentItemGroup.objects.create(
+            template=template,
+            name=name,
+            max_count=max_count,
+            clo=clo
+        )
+        # Assign items to group (item1...item10)
+        for idx in range(10):
+            setattr(group, f'item{idx+1}', items[idx] if idx < len(items) else None)
+        group.save()
+        # Assign items to group (old M2M logic)
+        items.update(group=group, in_group=True)
+        return JsonResponse({'success': True, 'group_id': group.id})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@faculty_required
+@require_POST
+def delete_assessment_group_view(request, section_id):
+    import json
+    section = get_object_or_404(Section, id=section_id)
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    try:
+        data = json.loads(request.body)
+        group_id = data.get('group_id')
+        group = get_object_or_404(AssessmentItemGroup, id=group_id, template__section=section)
+        # Unassign items
+        AssessmentItem.objects.filter(group=group).update(group=None, in_group=False)
+        group.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@faculty_required
+@require_POST
+def edit_assessment_group_view(request, section_id):
+    import json
+    section = get_object_or_404(Section, id=section_id)
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    try:
+        data = json.loads(request.body)
+        group_id = data.get('group_id')
+        name = data.get('name')
+        max_count = int(data.get('max_count'))
+        clo_id = data.get('clo_id')
+        max_marks = float(data.get('max_marks'))
+        item_ids = data.get('item_ids', [])
+        if not all([group_id, name, max_count, clo_id, max_marks, item_ids]):
+            return JsonResponse({'success': False, 'message': 'Missing required fields'}, status=400)
+        group = get_object_or_404(AssessmentItemGroup, id=group_id, template__section=section)
+        clo = get_object_or_404(CLO, id=clo_id, course=section.course)
+        items = AssessmentItem.objects.filter(id__in=item_ids, template=group.template)
+        if items.count() != len(item_ids):
+            return JsonResponse({'success': False, 'message': 'Some assessment items not found.'}, status=400)
+        for item in items:
+            if item.max_marks != max_marks or item.clo_id != clo.id:
+                return JsonResponse({'success': False, 'message': 'All items must have the same marks and CLO as the group.'}, status=400)
+        # Update group
+        group.name = name
+        group.max_count = max_count
+        group.clo = clo
+        group.save()
+        # Unassign all items from this group, then assign selected
+        AssessmentItem.objects.filter(group=group).update(group=None, in_group=False)
+        AssessmentItem.objects.filter(id__in=item_ids, template=group.template).update(group=None)
+        items.update(group=group, in_group=True)
+        # Assign items to item1...item10 fields
+        for idx in range(10):
+            setattr(group, f'item{idx+1}', items[idx] if idx < len(items) else None)
+        group.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)

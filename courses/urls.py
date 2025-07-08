@@ -67,4 +67,10 @@ urlpatterns = [
     
     # Assessment setup URL
     path('sections/<int:section_id>/assessment-setup/', views.assessment_setup_view, name='assessment_setup'),
+    path('sections/<int:section_id>/add-assessment-item/', views.add_assessment_item_view, name='add_assessment_item'),
+    path('sections/<int:section_id>/delete-assessment-item/', views.delete_assessment_item_view, name='delete_assessment_item'),
+    path('sections/<int:section_id>/edit-assessment-item/', views.edit_assessment_item_view, name='edit_assessment_item'),
+    path('sections/<int:section_id>/add-assessment-group/', views.add_assessment_group_view, name='add_assessment_group'),
+    path('sections/<int:section_id>/delete-assessment-group/', views.delete_assessment_group_view, name='delete_assessment_group'),
+    path('sections/<int:section_id>/edit-assessment-group/', views.edit_assessment_group_view, name='edit_assessment_group'),
 ] 
