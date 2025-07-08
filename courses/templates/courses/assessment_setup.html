@@ -13,21 +13,39 @@
                 </div>
                 <div class="card-body">
                     <!-- Assessment Status -->
-                    <div class="row mb-4">
+                    <div class="row mb-4 align-items-start">
+                        <!-- Marks Summary -->
                         <div class="col-md-6">
-                            <div class="alert alert-info">
-                                <strong>Total Marks:</strong> <span id="total-marks">0</span>/100
+                            <div class="alert alert-light border shadow-sm mb-2">
+                                <p class="mb-1">
+                                    <strong>Total Marks:</strong> <span id="total-marks">0</span>/100
+                                </p>
+                                <p class="mb-1">
+                                    <strong>CLO-wise Total:</strong> {{ clo_total|floatformat:2 }}/100
+                                </p>
+                                <p class="mb-0">
+                                    <strong>PLO-wise Total:</strong> {{ plo_total|floatformat:2 }}/100
+                                </p>
                             </div>
+                    
+                            {% if clo_total|floatformat:2 == '100.00' and plo_total|floatformat:2 == '100.00' %}
+                                <div class="text-success small fw-semibold">✅ All OK</div>
+                            {% else %}
+                                <div class="text-danger small fw-semibold">⚠️ Action Needed: Totals must be 100</div>
+                            {% endif %}
                         </div>
-                        <div class="col-md-6 text-end">
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAssessmentModal">
-                                <i class="fas fa-plus"></i> Add Assessment Item
+                    
+                        <!-- Action Buttons -->
+                        <div class="col-md-6 d-flex flex-md-row flex-column align-items-md-end justify-content-md-end gap-2 text-md-end mt-3 mt-md-0">
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addAssessmentModal">
+                                <i class="fas fa-plus me-1"></i> Add Assessment Item
                             </button>
-                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addGroupModal">
-                                <i class="fas fa-layer-group"></i> Create Assessment Group
+                            <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#addGroupModal">
+                                <i class="fas fa-layer-group me-1"></i> Create Assessment Group
                             </button>
                         </div>
                     </div>
+                    
 
                     <!-- Assessment Items List -->
                     <div class="table-responsive">

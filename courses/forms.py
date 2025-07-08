@@ -107,12 +107,48 @@ class BulkEnrollForm(forms.Form):
     )
 
 class EnrollmentForm(forms.ModelForm):
+    student_id = forms.CharField(label='Student ID', required=True)
+    student_name = forms.CharField(label='Student Name', required=True)
+
     class Meta:
         model = Enrollment
-        fields = ['enrollment_type']
+        fields = ['student_id', 'student_name', 'enrollment_type']
         widgets = {
             'enrollment_type': forms.Select(attrs={'class': 'form-select'})
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.student:
+            self.fields['student_id'].initial = self.instance.student.student_id
+            self.fields['student_name'].initial = self.instance.student.name
+
+    def clean_student_id(self):
+        new_id = self.cleaned_data['student_id']
+        # Exclude the current student from the uniqueness check
+        qs = self.instance.student.__class__.objects.filter(student_id=new_id)
+        if self.instance and self.instance.student:
+            qs = qs.exclude(pk=self.instance.student.pk)
+        if qs.exists():
+            raise forms.ValidationError('A student with this ID already exists.')
+        return new_id
+
+    def save(self, commit=True):
+        enrollment = super().save(commit=False)
+        # Update student info if changed
+        student = enrollment.student
+        new_id = self.cleaned_data.get('student_id')
+        new_name = self.cleaned_data.get('student_name')
+        if student:
+            if new_id and student.student_id != new_id:
+                student.student_id = new_id
+            if new_name and student.name != new_name:
+                student.name = new_name
+            if commit:
+                student.save()
+        if commit:
+            enrollment.save()
+        return enrollment
 
 class CLOForm(forms.ModelForm):
     class Meta:
