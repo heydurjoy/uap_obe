@@ -84,13 +84,20 @@ def section_detail(request, section_id):
 
     # Get assessment template if exists
     template = AssessmentTemplate.objects.filter(section=section).first()
-    
+    assessment_items = template.assessment_items.all() if template else []
+
+    # Fetch all marks for this section's assessment items and students
+    marks_qs = AssessmentMark.objects.filter(assessment_item__in=assessment_items, student__in=[e.student for e in enrollments])
+    marks_dict = {(m.student_id, m.assessment_item_id): m.marks for m in marks_qs}
+
     context = {
         'section': section,
         'template': template,
         'enrollments': enrollments,
         'title': f'{section.course.code} - Section {section.name}',
-        'sessions': section.sessions.all()
+        'sessions': section.sessions.all(),
+        'assessment_items': assessment_items,
+        'marks_dict': marks_dict,
     }
     
     return render(request, 'courses/section_detail.html', context)
@@ -1720,3 +1727,28 @@ def edit_assessment_group_view(request, section_id):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+# AJAX endpoint for auto-saving marks
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+
+@login_required
+@faculty_required
+@require_POST
+def autosave_mark(request, section_id):
+    section = get_object_or_404(Section, id=section_id)
+    if not request.user.is_superuser and not section.faculties.filter(id=request.user.faculty.id).exists():
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+    student_id = request.POST.get('student_id')
+    item_id = request.POST.get('item_id')
+    value = request.POST.get('value')
+    try:
+        student = Student.objects.get(id=student_id)
+        item = AssessmentItem.objects.get(id=item_id, template__section=section)
+        mark_obj, _ = AssessmentMark.objects.update_or_create(
+            student=student, assessment_item=item,
+            defaults={'marks': value}
+        )
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)

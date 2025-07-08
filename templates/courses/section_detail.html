@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load course_extras %}
+{% load dict_extras %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -167,7 +168,7 @@
                             </p>
                         </div>
                         {% if sessions %}
-                        <div class="d-flex flex-wrap align-items-center gap-2">
+                        <div class="d-flex flex-wrap align-items-center gap-2" style="min-width: 250px;">
                             <!-- Total Classes Input -->
                             <div class="d-flex align-items-center gap-2" style="min-width: 250px;">
                                 <div class="input-group input-group-sm flex-grow-1">
@@ -318,10 +319,139 @@
         <div class="tab-pane fade" id="marks" role="tabpanel" aria-labelledby="marks-tab">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <!-- Marks content will be populated here -->
+                    <form id="marks-form" method="post" action="">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary mb-3">Save Changes</button>
+                        <span id="marks-save-status" class="ms-3"></span>
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle text-center">
+                                <thead>
+                                    <tr>
+                                        <th rowspan="2">Student ID</th>
+                                        <th rowspan="2">Name</th>
+                                        {% regroup assessment_items by assessment_type as type_groups %}
+                                        {% for group in type_groups %}
+                                            <th colspan="{{ group.list|length }}">{{ group.grouper }}</th>
+                                        {% endfor %}
+                                        <th class="bg-light text-primary" rowspan="2">Assessment Total</th>
+                                        <th class="bg-light text-primary" rowspan="2">Midterm Total</th>
+                                        <th class="bg-light text-primary" rowspan="2">Final Total</th>
+                                        <th class="bg-light text-primary" rowspan="2">Total</th>
+                                        <th class="bg-light text-primary" rowspan="2">Grade</th>
+                                    </tr>
+                                    <tr>
+                                        {% for group in type_groups %}
+                                            {% for item in group.list %}
+                                                <th>{{ item.name }}<br><span class="text-muted small">({{ item.max_marks }})</span></th>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for enrollment in enrollments %}
+                                    <tr>
+                                        <td>{{ enrollment.student.student_id }}</td>
+                                        <td>{{ enrollment.student.name }}</td>
+                                        {% for group in type_groups %}
+                                            {% for item in group.list %}
+                                            <td>
+                                                <input type="number" min="0" max="{{ item.max_marks }}" step="0.01"
+                                                    class="form-control mark-input"
+                                                    data-student-id="{{ enrollment.student.id }}"
+                                                    data-item-id="{{ item.id }}"
+                                                    data-type="{{ item.assessment_type }}"
+                                                    value="{{ marks_dict|dict_get:enrollment.student.id|stringformat:',%s'|add:item.id }}"
+                                                    style="width: 80px; display: inline-block;">
+                                            </td>
+                                            {% endfor %}
+                                        {% endfor %}
+                                        <td class="assessment-total text-primary fw-bold">0</td>
+                                        <td class="midterm-total text-primary fw-bold">0</td>
+                                        <td class="final-total text-primary fw-bold">0</td>
+                                        <td class="grand-total text-primary fw-bold">0</td>
+                                        <td class="grade-cell text-primary fw-bold">F</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const saveStatus = document.getElementById('marks-save-status');
+            document.querySelectorAll('.mark-input').forEach(function(input) {
+                input.addEventListener('change', function() {
+                    const studentId = this.dataset.studentId;
+                    const itemId = this.dataset.itemId;
+                    const value = this.value;
+                    saveStatus.textContent = 'Saving...';
+                    fetch("{% url 'courses:autosave_mark' section.id %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: `student_id=${studentId}&item_id=${itemId}&value=${value}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            saveStatus.textContent = 'Saved!';
+                        } else {
+                            saveStatus.textContent = 'Error: ' + (data.error || 'Could not save');
+                        }
+                        setTimeout(() => { saveStatus.textContent = ''; }, 2000);
+                    })
+                    .catch(() => {
+                        saveStatus.textContent = 'Error: Could not save';
+                        setTimeout(() => { saveStatus.textContent = ''; }, 2000);
+                    });
+                });
+            });
+            // Save Changes button (manual save)
+            document.getElementById('marks-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveStatus.textContent = 'Saving all...';
+                const inputs = document.querySelectorAll('.mark-input');
+                let pending = inputs.length;
+                let error = false;
+                inputs.forEach(function(input) {
+                    const studentId = input.dataset.studentId;
+                    const itemId = input.dataset.itemId;
+                    const value = input.value;
+                    fetch("{% url 'courses:autosave_mark' section.id %}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: `student_id=${studentId}&item_id=${itemId}&value=${value}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) error = true;
+                        pending--;
+                        if (pending === 0) {
+                            saveStatus.textContent = error ? 'Some errors occurred.' : 'All marks saved!';
+                            setTimeout(() => { saveStatus.textContent = ''; }, 2000);
+                        }
+                    })
+                    .catch(() => {
+                        error = true;
+                        pending--;
+                        if (pending === 0) {
+                            saveStatus.textContent = 'Some errors occurred.';
+                            setTimeout(() => { saveStatus.textContent = ''; }, 2000);
+                        }
+                    });
+                });
+            });
+        });
+        </script>
 
         <!-- CO-PO Tab Pane -->
         <div class="tab-pane fade" id="copo" role="tabpanel" aria-labelledby="copo-tab">
@@ -499,52 +629,6 @@
 [data-bs-theme="dark"] .nav-tabs .nav-link.active {
     color: var(--primary-color) !important;
     background-color: var(--card-bg) !important;
-}
-
-/* Fixed Columns */
-.sticky-column {
-    position: sticky;
-    background-color: var(--background-color);
-    z-index: 3;
-    border: 1px solid #dee2e6;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-    vertical-align: middle;
-}
-
-[data-bs-theme="dark"] .sticky-column {
-    background-color: #2b3035;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.3);
-}
-
-.first-column {
-    left: 0;
-    width: 100px;
-    border-right: 2px solid rgba(5, 150, 105, 0.68) !important;
-}
-
-.second-column {
-    left: 100px;
-    width: 200px;
-    border-right: 2px solid rgba(5, 150, 105, 0.68) !important;
-}
-
-.total-column {
-    right: 60px;
-    width: 80px;
-    border-left: 2px solid rgba(5, 150, 105, 0.68) !important;
-    box-shadow: -2px 0 5px rgba(12, 121, 140, 0.56);
-}
-
-.percentage-column {
-    right: 0;
-    width: 60px;
-    border-left: 2px solid rgba(5, 150, 105, 0.68) !important;
-    box-shadow: -2px 0 5px rgba(26, 190, 219, 0.43);
-}
-
-[data-bs-theme="dark"] .total-column,
-[data-bs-theme="dark"] .percentage-column {
-    background-color: #2b3035;
 }
 
 /* Attendance Container Styles */
@@ -766,6 +850,24 @@
 
 .holiday-session:hover {
     background-color: rgba(220, 53, 69, 0.15) !important;
+}
+
+/* Sticky columns for attendance table only */
+.attendance-table .sticky-column {
+    position: sticky;
+    background-color: #fff;
+    z-index: 3;
+    border: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+.attendance-table .first-column { left: 0; width: 100px; border-right: 2px solid rgba(5, 150, 105, 0.68) !important; }
+.attendance-table .second-column { left: 100px; width: 200px; border-right: 2px solid rgba(5, 150, 105, 0.68) !important; }
+.attendance-table .total-column { right: 60px; width: 80px; border-left: 2px solid rgba(5, 150, 105, 0.68) !important; }
+.attendance-table .percentage-column { right: 0; width: 60px; border-left: 2px solid rgba(5, 150, 105, 0.68) !important; }
+[data-bs-theme="dark"] .attendance-table .sticky-column,
+[data-bs-theme="dark"] .attendance-table .total-column,
+[data-bs-theme="dark"] .attendance-table .percentage-column {
+    background-color: #2b3035;
 }
 </style>
 {% endblock %}
@@ -1109,6 +1211,37 @@ document.addEventListener('DOMContentLoaded', function() {
     sectionTabs.addEventListener('shown.bs.tab', function(event) {
         localStorage.setItem('activeSectionTab', event.target.dataset.bsTarget);
     });
+
+    function getGrade(total) {
+        if (total >= 80) return "A+";
+        if (total >= 75) return "A";
+        if (total >= 70) return "A-";
+        if (total >= 65) return "B+";
+        if (total >= 60) return "B";
+        if (total >= 55) return "B-";
+        if (total >= 50) return "C+";
+        if (total >= 45) return "C";
+        if (total >= 40) return "D";
+        return "F";
+    }
+    function recalculateTotals() {
+        document.querySelectorAll('#marks-form tbody tr').forEach(function(row) {
+            let assessment = 0, midterm = 0, final = 0;
+            row.querySelectorAll('.mark-input').forEach(function(input) {
+                const type = input.dataset.type;
+                const val = parseFloat(input.value) || 0;
+                if (type === 'Assessment') assessment += val;
+                else if (type === 'Midterm') midterm += val;
+                else if (type === 'Final') final += val;
+            });
+            row.querySelector('.assessment-total').textContent = assessment.toFixed(2);
+            row.querySelector('.midterm-total').textContent = midterm.toFixed(2);
+            row.querySelector('.final-total').textContent = final.toFixed(2);
+            const total = assessment + midterm + final;
+            row.querySelector('.grand-total').textContent = total.toFixed(2);
+            row.querySelector('.grade-cell').textContent = getGrade(total);
+        });
+    }
 });
 </script>
 {% endblock %}

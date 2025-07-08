@@ -73,4 +73,5 @@ urlpatterns = [
     path('sections/<int:section_id>/add-assessment-group/', views.add_assessment_group_view, name='add_assessment_group'),
     path('sections/<int:section_id>/delete-assessment-group/', views.delete_assessment_group_view, name='delete_assessment_group'),
     path('sections/<int:section_id>/edit-assessment-group/', views.edit_assessment_group_view, name='edit_assessment_group'),
+    path('sections/<int:section_id>/autosave-mark/', views.autosave_mark, name='autosave_mark'),
 ] 
